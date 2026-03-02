@@ -7,6 +7,7 @@ const STRATEGY_MAP: Record<CacheStrategy, string> = {
   networkOnly: 'NetworkOnly',
   cacheOnly: 'CacheOnly',
 };
+
 const UNSAFE_URL_PATTERNS = [
   /\/auth\//i,
   /\/callback/i,
@@ -29,6 +30,7 @@ const UNSAFE_URL_PATTERNS = [
 export function buildWorkboxOptions(config: ResolvedConfig) {
   const { cacheStrategies, workbox: workboxConfig, swDest, offline, pwaDir } = config;
   const runtimeCaching: any[] = [];
+
   const navigationOptions: any = {
     cacheName: 'pages-cache',
     expiration: {
@@ -37,6 +39,7 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
     },
     networkTimeoutSeconds: 3,
   };
+
   if (offline) {
     navigationOptions.plugins = [
       {
@@ -46,11 +49,13 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
       },
     ];
   }
+
   runtimeCaching.push({
     urlPattern: ({ request }: any) => request.mode === 'navigate',
     handler: STRATEGY_MAP[cacheStrategies.navigation || 'networkFirst'],
     options: navigationOptions,
   });
+
   runtimeCaching.push({
     urlPattern: /\/_next\/static\/.*/i,
     handler: STRATEGY_MAP[cacheStrategies.staticAssets || 'cacheFirst'],
@@ -62,6 +67,7 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
       },
     },
   });
+
   runtimeCaching.push({
     urlPattern: /\/_next\/data\/.*/i,
     handler: 'NetworkFirst',
@@ -73,6 +79,7 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
       },
     },
   });
+
   runtimeCaching.push({
     urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp|avif)$/i,
     handler: STRATEGY_MAP[cacheStrategies.images || 'staleWhileRevalidate'],
@@ -84,6 +91,7 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
       },
     },
   });
+
   runtimeCaching.push({
     urlPattern: /\.(?:woff|woff2|ttf|otf|eot)$/i,
     handler: 'CacheFirst',
@@ -95,6 +103,7 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
       },
     },
   });
+
   runtimeCaching.push({
     urlPattern: /\/api\/.*/i,
     handler: STRATEGY_MAP[cacheStrategies.api || 'networkOnly'],
@@ -111,6 +120,7 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
         : {}),
     },
   });
+
   const excludePatterns: Array<RegExp | string> = [
     /\.map$/,
     /^manifest.*\.js$/,
@@ -118,6 +128,7 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
     ...UNSAFE_URL_PATTERNS,
     ...(workboxConfig.exclude || []),
   ];
+
   const options: any = {
     swDest: swDest,
     skipWaiting: workboxConfig.skipWaiting ?? true,
@@ -127,14 +138,18 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
     exclude: excludePatterns,
     navigationPreload: true,
   };
+
   if (workboxConfig.additionalManifestEntries) {
     options.additionalManifestEntries = [...workboxConfig.additionalManifestEntries];
   }
+
   if (offline) {
     options.offlineGoogleAnalytics = false;
+
     if (!options.additionalManifestEntries) {
       options.additionalManifestEntries = [];
     }
+
     options.additionalManifestEntries.push({
       url: `/${pwaDir}/offline.html`,
       revision: Date.now().toString(),
@@ -146,9 +161,11 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
 export function createSWWebpackPlugin(config: ResolvedConfig) {
   const isDev = process.env.NODE_ENV !== 'production';
   const forceEnable = process.env.NEXT_PWA === '1';
+
   if (isDev && config.disableInDev && !forceEnable) {
     return null;
   }
+
   try {
     const { GenerateSW } = require('workbox-webpack-plugin');
     const workboxOptions = buildWorkboxOptions(config);

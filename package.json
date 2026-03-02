@@ -35,9 +35,8 @@
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "bun run build",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "prepublishOnly": "npm run build",
+    "format": "prettier --write ."
   },
   "keywords": [
     "next",
@@ -65,7 +64,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "^25.3.0",
+    "@types/node": "^25.3.3",
     "@types/react": "^19.2.14",
     "jsdom": "^28.1.0",
     "prettier": "^3.8.1",
@@ -80,6 +79,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/kiron0/next-pwa-auto"
+    "url": "git+https://github.com/kiron0/next-pwa-auto.git"
   }
 }

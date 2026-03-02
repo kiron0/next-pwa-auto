@@ -3,6 +3,7 @@ import { ManifestIcon, ResolvedConfig, WebAppManifest } from '../types';
 
 export function generateManifest(config: ResolvedConfig, icons: ManifestIcon[]): WebAppManifest {
   const appName = formatAppName(config.packageInfo.name);
+
   const baseManifest: WebAppManifest = {
     name: appName,
     short_name: appName.length > 12 ? appName.substring(0, 12) : appName,
@@ -15,15 +16,19 @@ export function generateManifest(config: ResolvedConfig, icons: ManifestIcon[]):
     icons,
     scope: config.scope,
   };
+
   const merged = deepMerge(baseManifest, config.manifest) as WebAppManifest;
+
   return merged;
 }
 
 function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
   const result = { ...target };
+
   for (const key of Object.keys(source)) {
     const sourceVal = source[key];
     const targetVal = result[key];
+
     if (
       sourceVal &&
       typeof sourceVal === 'object' &&

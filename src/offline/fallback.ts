@@ -6,9 +6,11 @@ import { ResolvedConfig } from '../types';
 
 export function generateOfflinePage(config: ResolvedConfig): string | null {
   if (!config.offline) return null;
+
   const publicDir = path.join(config.projectRoot, 'public');
   const pwaDir = getPwaOutputDir(config);
   const userOfflinePage = path.join(publicDir, '_offline.html');
+
   if (fs.existsSync(userOfflinePage)) {
     console.log('[next-pwa-auto] ℹ Using user-defined offline page: public/_offline.html');
     ensureDir(pwaDir);
@@ -16,9 +18,12 @@ export function generateOfflinePage(config: ResolvedConfig): string | null {
     fs.copyFileSync(userOfflinePage, dest);
     return dest;
   }
+
   ensureDir(pwaDir);
+
   const outputPath = path.join(pwaDir, 'offline.html');
   const appName = config.packageInfo.name || 'App';
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
