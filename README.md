@@ -19,13 +19,13 @@ No config files. No manifest. No service worker scripts. No icon generation.
 
 Adding PWA support to a Next.js project typically requires:
 
-- ✍️ Writing a `manifest.json` with 20+ fields by hand
-- 🎨 Generating 10+ icon sizes from a source image
-- ⚙️ Configuring Workbox for service worker generation
-- 🔧 Setting up caching strategies that don't break SSR
-- 📄 Creating an offline fallback page
-- 🔗 Wiring up SW registration in your app
-- 🐛 Debugging why the service worker cached your login page
+- Writing a `manifest.json` with 20+ fields by hand
+- Generating 10+ icon sizes from a source image
+- Configuring Workbox for service worker generation
+- Setting up caching strategies that don't break SSR
+- Creating an offline fallback page
+- Wiring up SW registration in your app
+- Debugging why the service worker cached your login page
 
 **next-pwa-auto does all of this automatically.** Install it, wrap your config, drop in an icon, and you have a production-ready PWA.
 
