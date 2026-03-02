@@ -1,0 +1,85 @@
+{
+  "name": "next-pwa-auto",
+  "version": "0.1.0",
+  "description": "Zero-config PWA plugin for Next.js 14+ — auto manifest, icons, service worker, and offline fallback",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./head": {
+      "types": "./dist/head.d.ts",
+      "import": "./dist/head.mjs",
+      "require": "./dist/head.js"
+    },
+    "./hooks": {
+      "types": "./dist/hooks.d.ts",
+      "import": "./dist/hooks.mjs",
+      "require": "./dist/hooks.js"
+    }
+  },
+  "bin": {
+    "next-pwa-auto": "dist/cli/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "bun run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "next",
+    "nextjs",
+    "pwa",
+    "progressive-web-app",
+    "service-worker",
+    "workbox",
+    "manifest",
+    "offline",
+    "zero-config"
+  ],
+  "author": "Toufiq Hasan Kiron",
+  "license": "MIT",
+  "peerDependencies": {
+    "next": ">=14.0.0",
+    "react": ">=18.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "sharp": "^0.34.5",
+    "workbox-webpack-plugin": "^7.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.3.0",
+    "@types/react": "^19.2.14",
+    "jsdom": "^28.1.0",
+    "prettier": "^3.8.1",
+    "react": "^19.2.4",
+    "terser": "^5.46.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kiron0/next-pwa-auto"
+  }
+}
