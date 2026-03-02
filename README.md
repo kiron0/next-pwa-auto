@@ -4,7 +4,7 @@
 
 **Zero-config PWA plugin for Next.js 14+**
 
-Turn any Next.js app into a Progressive Web App with one install and one line of code.
+Turn any Next.js app into a Progressive Web App with one install and minimal setup.
 No config files. No manifest. No service worker scripts. No icon generation.
 
 [![npm version](https://img.shields.io/npm/v/next-pwa-auto.svg)](https://www.npmjs.com/package/next-pwa-auto)
@@ -191,7 +191,7 @@ import { PWAHead } from 'next-pwa-auto/head';
 
 - Loads the SW registration script in production
 - **Unregisters stale service workers** in development mode
-- Handles the full SW lifecycle (install, update, activate)
+- Handles update detection and activation helpers
 
 ### Props
 
@@ -314,7 +314,7 @@ interface PWAAutoConfig {
     skipWaiting?: boolean;
     clientsClaim?: boolean;
     maximumFileSizeToCacheInBytes?: number;
-    additionalManifestEntries?: Array<{ url: string; revision: string }>;
+    additionalManifestEntries?: Array<{ url: string; revision: string | null }>;
     exclude?: Array<string | RegExp>;
   };
   cacheStrategies?: {
@@ -467,7 +467,7 @@ public/
 
 ### Custom Manifest
 
-Place a `manifest.json` or `manifest.webmanifest` in `public/`. Your values are **deep-merged** on top of the auto-generated manifest, so you only need to specify what you want to change:
+Place a `manifest.json` or `manifest.webmanifest` in `public/`. Your values are merged on top of the auto-generated manifest.
 
 ```json
 {
@@ -496,6 +496,9 @@ By default, next-pwa-auto searches for icons in this order:
 3. `public/logo.svg`
 4. `public/logo.png`
 5. `public/favicon.svg`
+6. `public/favicon.png`
+7. `public/app-icon.svg`
+8. `public/app-icon.png`
 
 If none are found, a **placeholder icon is auto-generated** with your app's initials on a themed background.
 
