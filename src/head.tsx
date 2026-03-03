@@ -55,5 +55,3 @@ export function PWAHead({
     </>
   );
 }
-
-export default PWAHead;

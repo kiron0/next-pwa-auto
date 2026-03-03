@@ -171,7 +171,10 @@ export function createSWWebpackPlugin(config: ResolvedConfig) {
     const workboxOptions = buildWorkboxOptions(config);
     return new GenerateSW(workboxOptions);
   } catch (e) {
-    console.error('[next-pwa-auto] ❌ Failed to load workbox-webpack-plugin:', e);
+    console.error(
+      '[next-pwa-auto] ' + String.fromCodePoint(0x274c) + ' Failed to load workbox-webpack-plugin:',
+      e
+    );
     return null;
   }
 }

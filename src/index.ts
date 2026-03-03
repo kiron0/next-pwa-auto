@@ -156,7 +156,7 @@ function normalizeTurbopackConfig(turbopackConfig: NextConfig['turbopack']): any
 
 function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
   console.log('');
-  console.log('[next-pwa-auto] 🚀 Generating PWA assets...');
+  console.log('[next-pwa-auto]  ' + String.fromCodePoint(0x1F680) + ' Generating PWA assets...');
   const publicDir = getPublicDir(config.projectRoot);
   const pwaDir = getPwaOutputDir(config);
   ensureDir(pwaDir);
@@ -199,7 +199,7 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
     });
     icons = scheduleIconGeneration(config);
   } else if (shouldPreserveIcons) {
-    console.log('[next-pwa-auto] ' + String.fromCharCode(0x267A) + ' Reusing existing generated icons.');
+    console.log('[next-pwa-auto] ' + String.fromCharCode(0x267B) + ' Reusing existing generated icons.');
   }
   const manifest = generateManifest(config, icons);
   writeManifest(manifest, config.projectRoot);
@@ -267,7 +267,6 @@ generateIcons(config).then((result) => {
   }
   return [];
 }
-export default withPWAAuto;
 
 export type { PWAAutoConfig } from './types';
 export { withPWAAuto };

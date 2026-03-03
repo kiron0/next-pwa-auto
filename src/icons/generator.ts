@@ -106,7 +106,9 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
       purpose: 'maskable',
     });
   }
-  console.log(`[next-pwa-auto] ✅ Generated ${icons.length} icons from ${sourceName}`);
+  console.log(
+    `[next-pwa-auto] ${String.fromCodePoint(0x2705)} Generated ${icons.length} icons from ${sourceName}`
+  );
   return { icons, sourceIcon: sourceIcon || 'placeholder' };
 }
 

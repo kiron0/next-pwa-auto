@@ -2,12 +2,7 @@ import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
 import { detectRouterType, getPublicDir, isNextProject, readPackageJson } from '../config';
-import {
-  collectPWASetupChecks,
-  PWA_MANIFEST_FILES,
-  findServiceWorkerPath,
-  type SetupCheck,
-} from './setup-checks';
+import { collectPWASetupChecks, type SetupCheck } from './setup-checks';
 
 export async function runDoctor(): Promise<void> {
   const projectRoot = process.cwd();
@@ -96,7 +91,8 @@ export async function runDoctor(): Promise<void> {
         const manifestName = path.basename(manifestPath);
         return `User-defined ${manifestName} found - will be merged with auto-generated`;
       },
-      missingManifestMessage: 'No manifest found after build. Re-run next build with next-pwa-auto configured.',
+      missingManifestMessage:
+        'No manifest found after build. Re-run next build with next-pwa-auto configured.',
     },
   });
   checks.push(...doctorChecks);
@@ -104,8 +100,7 @@ export async function runDoctor(): Promise<void> {
   checks.push({
     label: 'Router type',
     status: 'pass',
-    message:
-      routerType === 'app' ? 'App Router detected' : 'Pages Router detected',
+    message: routerType === 'app' ? 'App Router detected' : 'Pages Router detected',
   });
 
   checks.push({
@@ -117,10 +112,10 @@ export async function runDoctor(): Promise<void> {
   for (const check of checks) {
     const icon =
       check.status === 'pass'
-        ? chalk.green('✅')
+        ? String.fromCodePoint(0x2705)
         : check.status === 'warn'
-          ? chalk.yellow('⚠️ ')
-          : chalk.red('❌');
+          ? String.fromCodePoint(0x26a0, 0xfe0f)
+          : String.fromCodePoint(0x274c);
 
     const label = chalk.bold(check.label);
 
@@ -142,12 +137,12 @@ export async function runDoctor(): Promise<void> {
 
   if (failCount === 0) {
     console.log(
-      chalk.green.bold('  ✅ PWA setup looks good!'),
+      chalk.green.bold('  ' + String.fromCodePoint(0x2705) + ' PWA setup looks good!'),
       chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
     );
   } else {
     console.log(
-      chalk.red.bold(`  ❌ ${failCount} issue(s) found.`),
+      chalk.red.bold(`  ${String.fromCodePoint(0x274c)} ${failCount} issue(s) found.`),
       chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
     );
   }

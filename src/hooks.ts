@@ -41,4 +41,3 @@ export function usePWAUpdate(): PWAUpdateState {
   }, [registration]);
   return { updateAvailable, update, registration };
 }
-export default usePWAUpdate;

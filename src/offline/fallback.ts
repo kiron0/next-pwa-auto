@@ -160,6 +160,8 @@ export function generateOfflinePage(config: ResolvedConfig): string | null {
 </body>
 </html>`;
   fs.writeFileSync(outputPath, html, 'utf-8');
-  console.log('[next-pwa-auto] ✅ Generated offline fallback page');
+  console.log(
+    '[next-pwa-auto] ' + String.fromCodePoint(0x2705) + ' Generated offline fallback page'
+  );
   return outputPath;
 }
