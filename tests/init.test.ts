@@ -376,8 +376,10 @@ describe('init command', () => {
     );
     mkdirSync(path.join(projectRoot, 'public', '_pwa', 'icons'), { recursive: true });
     writeFileSync(path.join(projectRoot, 'public', '_pwa', 'icons', 'icon-192x192.png'), 'old');
+    writeFileSync(path.join(projectRoot, 'public', 'manifest.webmanifest'), '{}');
     writeFileSync(path.join(projectRoot, 'public', 'sw.js'), 'const c = 1');
     writeFileSync(path.join(projectRoot, 'public', '_pwa', 'offline.html'), 'offline');
+    writeFileSync(path.join(projectRoot, 'public', 'sw-register.js'), 'const register = () => {}');
 
     mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
     writeFileSync(

@@ -12,13 +12,13 @@ function makeCheck(overrides: Partial<SetupCheck>): SetupCheck {
 }
 
 describe('setup checks', () => {
-  it('allows already-configured state with only allowed minor warnings', () => {
+  it('allows already-configured state only when required artifacts are present', () => {
     const checks: SetupCheck[] = [
       makeCheck({ label: 'Next config', status: 'pass', message: 'next.config.mjs uses next-pwa-auto' }),
       makeCheck({ label: 'PWAHead (app layout)', status: 'pass', message: 'Found <PWAHead />' }),
-      makeCheck({ label: 'Icons', status: 'warn', message: 'Generated PWA icons are already present in public/_pwa/icons.' }),
+      makeCheck({ label: 'Icons', status: 'pass', message: 'Generated PWA icons are already present in public/_pwa/icons.' }),
       makeCheck({ label: 'Manifest', status: 'pass', message: 'Found public/manifest.webmanifest.' }),
-      makeCheck({ label: 'Service worker', status: 'pass', message: 'Found public/sw.js.' }),
+      makeCheck({ label: 'Service worker', status: 'pass', message: 'Found public/sw-register.js.' }),
       makeCheck({ label: 'Offline page', status: 'pass', message: 'Offline fallback page exists.' }),
       makeCheck({ label: 'HTTPS', status: 'warn', message: 'Ensure HTTPS is configured for production (required for SW)' }),
     ];
@@ -38,16 +38,16 @@ describe('setup checks', () => {
     expect(canSkipIfConfigured(checks, 'app')).toBe(false);
   });
 
-  it('treats icons warning as non-blocking', () => {
+  it('does not skip when required Icons warning is present', () => {
     const checks: SetupCheck[] = [
       makeCheck({ label: 'Next config', status: 'pass', message: 'next.config.mjs uses next-pwa-auto' }),
       makeCheck({ label: 'PWAHead (app layout)', status: 'pass', message: 'Found <PWAHead />' }),
       makeCheck({ label: 'Icons', status: 'warn', message: 'No source icon found and generated icons were not found.' }),
       makeCheck({ label: 'Manifest', status: 'pass', message: 'Found public/manifest.webmanifest.' }),
-      makeCheck({ label: 'Service worker', status: 'pass', message: 'Found public/sw.js.' }),
+      makeCheck({ label: 'Service worker', status: 'pass', message: 'Found public/sw-register.js.' }),
       makeCheck({ label: 'Offline page', status: 'pass', message: 'Offline fallback page exists.' }),
     ];
 
-    expect(canSkipIfConfigured(checks, 'app')).toBe(true);
+    expect(canSkipIfConfigured(checks, 'app')).toBe(false);
   });
 });

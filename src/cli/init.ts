@@ -80,7 +80,7 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
     );
     console.log('');
     const setupChecks = collectPWASetupChecks(projectRoot, routerType);
-    const canTreatAsConfigured = canSkipIfConfigured(setupChecks, routerType);
+    const canTreatAsConfigured = canSkipIfConfigured(setupChecks, routerType, projectRoot);
 
     if (!skip) {
       await askConfirm('Set up next-pwa-auto in this project?', true);

@@ -29,6 +29,10 @@ export const PWA_SERVICE_WORKER_CANDIDATES = [
   path.join('public', 'sw-register.js'),
   path.join('public', '_pwa', 'sw-register.js'),
 ];
+export const SW_REGISTER_CANDIDATES = [
+  path.join('public', 'sw-register.js'),
+  path.join('public', '_pwa', 'sw-register.js'),
+];
 
 export function findServiceWorkerPath(projectRoot: string): string | null {
   return (
@@ -60,6 +64,7 @@ interface IconCheckOptions {
 interface ManifestCheckOptions {
   hasManifestMessage?: (manifestPath: string, projectRoot: string) => string;
   missingManifestMessage?: string;
+  missingManifestStatus?: CheckStatus;
 }
 
 interface SimpleCheckLabelOptions {
@@ -111,7 +116,26 @@ function collectPWAHeadChecks(
   return checks;
 }
 
-export function canSkipIfConfigured(checks: SetupCheck[], routerType: RouterType): boolean {
+function getCheck(checks: SetupCheck[], label: string): SetupCheck | undefined {
+  return checks.find((check) => check.label === label);
+}
+
+function hasSwRegisterScript(projectRoot: string | undefined, checks: SetupCheck[] = []): boolean {
+  if (projectRoot) {
+    return SW_REGISTER_CANDIDATES.map((candidate) => path.join(projectRoot, candidate)).some(
+      (swRegisterPath) => fs.existsSync(swRegisterPath)
+    );
+  }
+
+  const swCheck = getCheck(checks, 'Service worker');
+  return Boolean(swCheck && swCheck.message.includes('sw-register.js'));
+}
+
+export function canSkipIfConfigured(
+  checks: SetupCheck[],
+  routerType: RouterType,
+  projectRoot?: string
+): boolean {
   const nextConfigCheck = checks.find((check) => check.label === 'Next config');
   if (!nextConfigCheck || nextConfigCheck.status !== 'pass') {
     return false;
@@ -121,6 +145,24 @@ export function canSkipIfConfigured(checks: SetupCheck[], routerType: RouterType
     (check) => check.status === 'warn' && !isAllowedMinorWarning(check)
   );
   if (blockingWarnings.length > 0) {
+    return false;
+  }
+
+  const manifestCheck = getCheck(checks, 'Manifest');
+  const iconsCheck = getCheck(checks, 'Icons');
+  const offlineCheck = getCheck(checks, 'Offline page');
+  if (
+    !manifestCheck ||
+    manifestCheck.status !== 'pass' ||
+    !iconsCheck ||
+    iconsCheck.status !== 'pass' ||
+    !offlineCheck ||
+    offlineCheck.status !== 'pass'
+  ) {
+    return false;
+  }
+
+  if (!hasSwRegisterScript(projectRoot, checks)) {
     return false;
   }
 
@@ -269,7 +311,7 @@ function checkManifest(
 
   return {
     label: 'Manifest',
-    status: 'pass',
+    status: options.missingManifestStatus ?? 'warn',
     message:
       options.missingManifestMessage ??
       'No manifest found after build. Re-run next build with next-pwa-auto configured.',
