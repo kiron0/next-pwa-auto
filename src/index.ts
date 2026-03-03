@@ -260,7 +260,7 @@ generateIcons(config).then((result) => {
     }
   } catch (e) {
     console.warn(
-      '[next-pwa-auto] ' + String.fromCodePoint(0x26a0, 0xfe0f) + ' Icon generation failed:',
+      '[next-pwa-auto] ' + String.fromCodePoint(0x26a0, 0xfe0f) + '  Icon generation failed:',
       (e as Error).message
     );
     console.warn(

@@ -7,6 +7,7 @@ import { collectPWASetupChecks, type SetupCheck } from './setup-checks';
 export async function runDoctor(): Promise<void> {
   const projectRoot = process.cwd();
   const checks: SetupCheck[] = [];
+  const notes: string[] = [];
   console.log('');
   console.log(chalk.bold.blue('[Doctor] next-pwa-auto'));
   console.log(chalk.gray('-'.repeat(45)));
@@ -103,18 +104,14 @@ export async function runDoctor(): Promise<void> {
     message: routerType === 'app' ? 'App Router detected' : 'Pages Router detected',
   });
 
-  checks.push({
-    label: 'HTTPS',
-    status: 'warn',
-    message: 'Ensure HTTPS is configured for production (required for SW)',
-  });
+  notes.push('HTTPS: Ensure HTTPS is configured for production (required for SW)');
 
   for (const check of checks) {
     const icon =
       check.status === 'pass'
         ? String.fromCodePoint(0x2705)
         : check.status === 'warn'
-          ? String.fromCodePoint(0x26a0, 0xfe0f)
+          ? `${String.fromCodePoint(0x26a0, 0xfe0f)} `
           : String.fromCodePoint(0x274c);
 
     const label = chalk.bold(check.label);
@@ -126,6 +123,12 @@ export async function runDoctor(): Promise<void> {
           ? chalk.yellow(check.message)
           : chalk.gray(check.message);
     console.log(`  ${icon} ${label}: ${message}`);
+  }
+
+  console.log('');
+
+  for (const note of notes) {
+    console.log(`  ${String.fromCodePoint(0x26a0, 0xfe0f)}  ${chalk.yellow(note)}`);
   }
 
   const failCount = checks.filter((c) => c.status === 'fail').length;
