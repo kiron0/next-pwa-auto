@@ -9,7 +9,7 @@ import packageJson from '../../package.json';
 const program = new Command();
 let didHandleGracefulExit = false;
 
-function printGracefulExit(message: string): never {
+function printGracefulExit(): never {
   if (didHandleGracefulExit) {
     process.exit(0);
   }
@@ -17,16 +17,15 @@ function printGracefulExit(message: string): never {
   console.log('');
   console.log(chalk.gray('-'.repeat(45)));
   console.log(chalk.green.bold('  Thanks for using next-pwa-auto'));
-  console.log(chalk.gray(`  ${message}`));
   console.log(chalk.gray('  We appreciate you trusting us to set up your PWA experience.'));
   process.exit(0);
 }
 
 process.once('SIGINT', () => {
-  printGracefulExit('Operation was cancelled by your request.');
+  printGracefulExit();
 });
 process.once('SIGTERM', () => {
-  printGracefulExit('Process terminated by signal.');
+  printGracefulExit();
 });
 
 const cliVersion = typeof packageJson.version === 'string' ? packageJson.version : '0.0.0';

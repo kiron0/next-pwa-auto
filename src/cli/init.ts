@@ -517,7 +517,6 @@ function printCancelledMessage(): void {
   console.log('');
   console.log(chalk.gray('-'.repeat(45)));
   console.log(chalk.green.bold('  Thanks for using next-pwa-auto'));
-  console.log(chalk.gray('  Setup was cancelled gracefully.'));
   console.log('');
 }
 
