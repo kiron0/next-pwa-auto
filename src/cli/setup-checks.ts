@@ -174,15 +174,6 @@ export function canSkipIfConfigured(
   return requiredHeadChecks.every((check) => check.status === 'pass');
 }
 
-export function hasAnyPotentialPwaConfig(checks: SetupCheck[]): boolean {
-  const nextConfigCheck = checks.find((check) => check.label === 'Next config');
-  const hasConfiguredPwaHead = checks.some(
-    (check) =>
-      check.label.startsWith('PWAHead') && (check.status === 'pass' || check.status === 'warn')
-  );
-  return Boolean(nextConfigCheck && nextConfigCheck.status !== 'fail') || hasConfiguredPwaHead;
-}
-
 export function checkNextConfig(projectRoot: string): SetupCheck {
   const configFile = findNextConfigFile(projectRoot);
   if (!configFile) {

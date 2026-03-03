@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
-import { detectRouterType, getPublicDir, isNextProject, readPackageJson } from '../config';
+import { detectRouterType, isNextProject, readPackageJson } from '../config';
 import { collectPWASetupChecks, type SetupCheck } from './setup-checks';
 
 export async function runDoctor(): Promise<void> {
@@ -60,7 +60,6 @@ export async function runDoctor(): Promise<void> {
   }
 
   const routerType = detectRouterType(projectRoot);
-  const publicDir = getPublicDir(projectRoot);
   const doctorChecks = collectPWASetupChecks(projectRoot, routerType, {
     head: {
       app: { includeManualInstructions: true },

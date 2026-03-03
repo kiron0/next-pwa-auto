@@ -76,9 +76,6 @@ export function detectRouterType(projectRoot: string): 'app' | 'pages' {
   const hasApp =
     fs.existsSync(path.join(projectRoot, 'app')) ||
     fs.existsSync(path.join(projectRoot, 'src', 'app'));
-  const hasPages =
-    fs.existsSync(path.join(projectRoot, 'pages')) ||
-    fs.existsSync(path.join(projectRoot, 'src', 'pages'));
   if (hasApp) return 'app';
   return 'pages';
 }
