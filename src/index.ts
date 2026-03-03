@@ -199,7 +199,7 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
     icons = scheduleIconGeneration(config);
   } else if (shouldPreserveIcons) {
     console.log(
-      '[next-pwa-auto] ' + String.fromCharCode(0x267a) + ' Reusing existing generated icons.'
+      '[next-pwa-auto] ' + String.fromCodePoint(0x267B) + ' Reusing existing generated icons.'
     );
   }
   const manifest = generateManifest(config, icons);

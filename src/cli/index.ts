@@ -29,8 +29,12 @@ process.once('SIGTERM', () => {
 });
 
 const cliVersion = typeof packageJson.version === 'string' ? packageJson.version : '0.0.0';
+const cliDescription =
+  typeof packageJson.description === 'string'
+    ? packageJson.description
+    : 'next-pwa-auto CLI';
 
-program.name('next-pwa-auto').description('Zero-config PWA plugin for Next.js').version(cliVersion);
+program.name('next-pwa-auto').description(cliDescription).version(cliVersion);
 program
   .command('doctor')
   .description('Check PWA setup and diagnose issues')

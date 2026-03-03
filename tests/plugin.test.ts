@@ -198,7 +198,7 @@ describe('withPWAAuto plugin', () => {
       expect(fs.existsSync(path.join(tmpDir, 'public', '_pwa', 'sw-register.js'))).toBe(true);
       expect(fs.existsSync(existingIconPath)).toBe(true);
       expect(logs.join('\n')).toContain(
-        '[next-pwa-auto] ' + String.fromCharCode(0x267A) + ' Reusing existing generated icons.'
+        '[next-pwa-auto] ' + String.fromCodePoint(0x267b) + ' Reusing existing generated icons.'
       );
     } finally {
       consoleLogSpy.mockRestore();
@@ -206,4 +206,3 @@ describe('withPWAAuto plugin', () => {
     }
   });
 });
-
