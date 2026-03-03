@@ -105,7 +105,7 @@ describe('init command', () => {
     const configPath = path.join(projectRoot, 'next.config.mjs');
     expect(existsSync(configPath)).toBe(true);
     const config = readFileSync(configPath, 'utf-8');
-    expect(config).toContain("import withPWAAuto from 'next-pwa-auto';");
+    expect(config).toContain("import { withPWAAuto } from 'next-pwa-auto';");
     expect(config).toContain('withPWAAuto()(nextConfig)');
   });
 
@@ -143,7 +143,7 @@ describe('init command', () => {
     expect(readCommandLog()).toEqual(['npm run build', 'npx next-pwa-auto doctor']);
 
     const config = readFileSync(path.join(projectRoot, 'next.config.js'), 'utf-8');
-    expect(config).toContain("const withPWAAuto = require('next-pwa-auto');");
+    expect(config).toContain("const { withPWAAuto } = require('next-pwa-auto');");
     expect(config).toContain('module.exports = withPWAAuto()(nextConfig);');
 
     const layout = readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8');
@@ -293,7 +293,7 @@ describe('init command', () => {
 
   it('keeps existing config and layout untouched when already configured', async () => {
     const nextConfigContent = [
-      "import withPWAAuto from 'next-pwa-auto';",
+      "import { withPWAAuto } from 'next-pwa-auto';",
       '',
       'const nextConfig = {};',
       '',
@@ -366,7 +366,7 @@ describe('init command', () => {
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
       [
-        "import withPWAAuto from 'next-pwa-auto';",
+        "import { withPWAAuto } from 'next-pwa-auto';",
         '',
         'const nextConfig = {};',
         '',
@@ -413,7 +413,7 @@ describe('init command', () => {
       path.join(projectRoot, 'next.config.ts'),
       [
         "import type { NextConfig } from 'next';",
-        "import withPWAAuto from 'next-pwa-auto';",
+        "import { withPWAAuto } from 'next-pwa-auto';",
         '',
         'const nextConfig: NextConfig = {',
         '  reactStrictMode: true,',
@@ -438,3 +438,4 @@ describe('init command', () => {
     expect(config).toContain('export default withPWAAuto()(nextConfig);');
   });
 });
+

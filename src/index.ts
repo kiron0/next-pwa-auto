@@ -156,7 +156,7 @@ function normalizeTurbopackConfig(turbopackConfig: NextConfig['turbopack']): any
 
 function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
   console.log('');
-  console.log('[next-pwa-auto]  ' + String.fromCodePoint(0x1F680) + ' Generating PWA assets...');
+  console.log('[next-pwa-auto]  ' + String.fromCodePoint(0x1f680) + ' Generating PWA assets...');
   const publicDir = getPublicDir(config.projectRoot);
   const pwaDir = getPwaOutputDir(config);
   ensureDir(pwaDir);
@@ -169,8 +169,7 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
   const shouldGenerateFromSource =
     Boolean(config.icon) || Boolean(findSourceIcon(publicDir)) || forceRegenIcons;
   const shouldPreserveIcons = existingIcons.length > 0 && !shouldGenerateFromSource;
-  const shouldGenerateIcons =
-    existingIcons.length === 0 || shouldGenerateFromSource;
+  const shouldGenerateIcons = existingIcons.length === 0 || shouldGenerateFromSource;
 
   if (fs.existsSync(iconsDir)) {
     icons = existingIcons.map((filename) => {
@@ -199,17 +198,23 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
     });
     icons = scheduleIconGeneration(config);
   } else if (shouldPreserveIcons) {
-    console.log('[next-pwa-auto] ' + String.fromCharCode(0x267B) + ' Reusing existing generated icons.');
+    console.log(
+      '[next-pwa-auto] ' + String.fromCharCode(0x267a) + ' Reusing existing generated icons.'
+    );
   }
   const manifest = generateManifest(config, icons);
   writeManifest(manifest, config.projectRoot);
-  console.log('[next-pwa-auto] ✅ Generated manifest.webmanifest');
+  console.log(
+    '[next-pwa-auto] ' + String.fromCodePoint(0x2705) + ' Generated manifest.webmanifest'
+  );
   generateOfflinePage(config);
   const registerScript = generateSWRegisterFile(`/${config.swDest}`, config.scope);
   const registerPath = path.join(pwaDir, 'sw-register.js');
   fs.writeFileSync(registerPath, registerScript, 'utf-8');
-  console.log('[next-pwa-auto] ✅ Generated SW registration script');
-  console.log('[next-pwa-auto] ✅ PWA assets ready');
+  console.log(
+    '[next-pwa-auto] ' + String.fromCodePoint(0x2705) + ' Generated SW registration script'
+  );
+  console.log('[next-pwa-auto] ' + String.fromCodePoint(0x2705) + ' PWA assets ready');
   console.log('');
 }
 
@@ -254,8 +259,15 @@ generateIcons(config).then((result) => {
       return icons;
     }
   } catch (e) {
-    console.warn('[next-pwa-auto] ⚠ Icon generation failed:', (e as Error).message);
-    console.warn('[next-pwa-auto] ℹ Run `npx next-pwa-auto doctor` to diagnose issues');
+    console.warn(
+      '[next-pwa-auto] ' + String.fromCodePoint(0x26a0, 0xfe0f) + ' Icon generation failed:',
+      (e as Error).message
+    );
+    console.warn(
+      '[next-pwa-auto] ' +
+        String.fromCodePoint(0x2139, 0xfe0f) +
+        '  Run `npx next-pwa-auto doctor` to diagnose issues'
+    );
   } finally {
     const scriptPath = path.join(__dirname, '_generate-icons.js');
     if (fs.existsSync(scriptPath)) {

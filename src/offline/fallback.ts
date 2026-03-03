@@ -12,7 +12,11 @@ export function generateOfflinePage(config: ResolvedConfig): string | null {
   const userOfflinePage = path.join(publicDir, '_offline.html');
 
   if (fs.existsSync(userOfflinePage)) {
-    console.log('[next-pwa-auto] ℹ Using user-defined offline page: public/_offline.html');
+    console.log(
+      '[next-pwa-auto] ' +
+        String.fromCodePoint(0x2139, 0xfe0f) +
+        '  Using user-defined offline page: public/_offline.html'
+    );
     ensureDir(pwaDir);
     const dest = path.join(pwaDir, 'offline.html');
     fs.copyFileSync(userOfflinePage, dest);

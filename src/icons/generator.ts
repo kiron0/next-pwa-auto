@@ -42,7 +42,7 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
     sourceBuffer = await generatePlaceholderIcon(appName, themeColor, 512);
     sourceName = 'placeholder (auto-generated)';
     console.log(
-      `[next-pwa-auto] ℹ No source icon found — generating placeholder with initials "${getInitials(appName)}"`
+      `[next-pwa-auto] ${String.fromCodePoint(0x2139, 0xfe0f)}  No source icon found — generating placeholder with initials "${getInitials(appName)}"`
     );
   }
   const icons: ManifestIcon[] = [];
@@ -71,7 +71,7 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
     await generateFavicon(sourceBuffer, faviconPath);
   } else {
     console.log(
-      `[next-pwa-auto] ℹ Skipping favicon generation because existing favicon exists: ${path.relative(config.projectRoot, existingFavicon)}`
+      `[next-pwa-auto] ${String.fromCodePoint(0x2139, 0xfe0f)}  Skipping favicon generation because existing favicon exists: ${path.relative(config.projectRoot, existingFavicon)}`
     );
   }
 

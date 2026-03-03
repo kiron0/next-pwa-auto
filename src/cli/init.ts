@@ -460,7 +460,7 @@ function injectPluginIntoConfig(
   const isESM = filename.endsWith('.mjs') || filename.endsWith('.mts');
 
   if (isTS || isESM) {
-    const importLine = `import withPWAAuto from 'next-pwa-auto';\n`;
+    const importLine = `import { withPWAAuto } from 'next-pwa-auto';\n`;
     if (content.includes('export default')) {
       const replacement = 'export default withPWAAuto()(';
       const modified = importLine + content.replace(/export default\s+/, replacement);
@@ -469,7 +469,7 @@ function injectPluginIntoConfig(
     return null;
   }
 
-  const requireLine = `const withPWAAuto = require('next-pwa-auto');\n`;
+  const requireLine = `const { withPWAAuto } = require('next-pwa-auto');\n`;
   if (content.includes('module.exports')) {
     const replacement = 'module.exports = withPWAAuto()(';
     const modified = requireLine + content.replace(/module\.exports\s*=\s*/, replacement);
@@ -508,7 +508,7 @@ function getBuildCommand(projectRoot: string): string {
 }
 
 function buildNextConfigTemplate(): string {
-  return "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n";
+  return "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n";
 }
 
 function injectPWAHead(
@@ -563,10 +563,10 @@ function printManualSetupInstructions(configFile: string, routerType: 'app' | 'p
   console.log('');
   console.log(chalk.gray('  Manual instruction:'));
   if (isESM) {
-    console.log(chalk.gray("    import withPWAAuto from 'next-pwa-auto';"));
+    console.log(chalk.gray("    import { withPWAAuto } from 'next-pwa-auto';"));
     console.log(chalk.gray('    export default withPWAAuto()(nextConfig);'));
   } else {
-    console.log(chalk.gray("    const withPWAAuto = require('next-pwa-auto');"));
+    console.log(chalk.gray("    const { withPWAAuto } = require('next-pwa-auto');"));
     console.log(chalk.gray('    module.exports = withPWAAuto()(nextConfig);'));
   }
   if (routerType === 'app') {

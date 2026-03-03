@@ -35,7 +35,7 @@ npm install next-pwa-auto
 
 ```js
 // next.config.js
-const withPWAAuto = require('next-pwa-auto');
+const { withPWAAuto } = require('next-pwa-auto');
 module.exports = withPWAAuto()({});
 ```
 
@@ -84,13 +84,13 @@ bun add next-pwa-auto
 
 ```js
 // next.config.js (CommonJS)
-const withPWAAuto = require('next-pwa-auto');
+const { withPWAAuto } = require('next-pwa-auto');
 module.exports = withPWAAuto()({});
 ```
 
 ```ts
 // next.config.mjs (ESM)
-import withPWAAuto from 'next-pwa-auto';
+import { withPWAAuto } from 'next-pwa-auto';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {};
@@ -254,7 +254,7 @@ window.__PWA_AUTO.version; // Plugin version
 All options are optional. Zero config works out of the box.
 
 ```ts
-import withPWAAuto from 'next-pwa-auto';
+import { withPWAAuto } from 'next-pwa-auto';
 
 export default withPWAAuto({
   // Disable the plugin entirely
