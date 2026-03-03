@@ -9,6 +9,9 @@ interface DoctorCheck {
   status: 'pass' | 'fail' | 'warn';
   message: string;
 }
+const APP_LAYOUT_FILES = ['layout.tsx', 'layout.jsx', 'layout.ts', 'layout.js'];
+const APP_ROOT_LAYOUT_PATH_HINT = 'app/layout.(ts|tsx|js|jsx) (or src/app/layout.(ts|tsx|js|jsx))';
+const PAGES_APP_FILES = ['_app.tsx', '_app.jsx', '_app.ts', '_app.js'];
 
 export async function runDoctor(): Promise<void> {
   const projectRoot = process.cwd();
@@ -107,6 +110,31 @@ export async function runDoctor(): Promise<void> {
           : 'Pages Router detected',
   });
 
+  const appLayoutPath = findTopLevelAppLayoutPath(projectRoot);
+  const pagesAppPath = findPagesAppPath(projectRoot);
+
+  if (appLayoutPath) {
+    const hasPWAHead = hasPWAHeadInFile(appLayoutPath);
+    checks.push({
+      label: 'PWAHead (app layout)',
+      status: hasPWAHead ? 'pass' : 'warn',
+      message: hasPWAHead
+        ? `Found <PWAHead /> in ${path.relative(projectRoot, appLayoutPath)}`
+        : `Missing <PWAHead /> in ${path.relative(projectRoot, appLayoutPath)}${'\n  ' + 'Manual: Add <PWAHead /> inside <head> in ' + APP_ROOT_LAYOUT_PATH_HINT}`,
+    });
+  }
+
+  if (pagesAppPath) {
+    const hasPWAHead = hasPWAHeadInFile(pagesAppPath);
+    checks.push({
+      label: 'PWAHead (pages layout)',
+      status: hasPWAHead ? 'pass' : 'warn',
+      message: hasPWAHead
+        ? `Found <PWAHead /> in ${path.relative(projectRoot, pagesAppPath)}`
+        : `Missing <PWAHead /> in ${path.relative(projectRoot, pagesAppPath)}\n  Manual: Add <PWAHead /> in pages/_app.tsx`,
+    });
+  }
+
   const publicDir = getPublicDir(projectRoot);
   const sourceIcon = findSourceIcon(publicDir);
   const pwaIconsDir = path.join(publicDir, '_pwa', 'icons');
@@ -196,7 +224,7 @@ export async function runDoctor(): Promise<void> {
       check.status === 'pass'
         ? chalk.green('✅')
         : check.status === 'warn'
-          ? chalk.yellow('⚠️')
+          ? chalk.yellow('⚠️ ')
           : chalk.red('❌');
 
     const label = chalk.bold(check.label);
@@ -217,21 +245,47 @@ export async function runDoctor(): Promise<void> {
   console.log('');
   console.log(chalk.gray('-'.repeat(45)));
 
-  if (failCount === 0 && warnCount === 0) {
+  if (failCount === 0) {
     console.log(
-      chalk.green.bold('  ✅ PWA setup looks good!'),
-      chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
-    );
-  } else if (failCount === 0) {
-    console.log(
-      chalk.yellow.bold('  ⚠️ PWA setup is ready with warnings.'),
+      chalk.green.bold('  🎉 PWA setup looks good!'),
       chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
     );
   } else {
     console.log(
-      chalk.red.bold(`  ❌ ${failCount} issue(s) found.`),
+      chalk.red.bold(`  ⚠ ${failCount} issue(s) found.`),
       chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
     );
   }
   console.log('');
+}
+
+function hasPWAHeadInFile(filePath: string): boolean {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  return /<PWAHead\s*\/?>/.test(content) || /PWAHead/.test(content);
+}
+
+function findTopLevelAppLayoutPath(projectRoot: string): string | null {
+  const appRoots = [path.join(projectRoot, 'app'), path.join(projectRoot, 'src', 'app')];
+  for (const appRoot of appRoots) {
+    for (const file of APP_LAYOUT_FILES) {
+      const candidate = path.join(appRoot, file);
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+}
+
+function findPagesAppPath(projectRoot: string): string | null {
+  const pageRoots = [path.join(projectRoot, 'pages'), path.join(projectRoot, 'src', 'pages')];
+  for (const pagesRoot of pageRoots) {
+    for (const file of PAGES_APP_FILES) {
+      const candidate = path.join(pagesRoot, file);
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+  return null;
 }
