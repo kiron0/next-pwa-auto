@@ -256,8 +256,8 @@ describe('interactive init', () => {
     expect(selectOptions?.map((option) => option.value)).toContain('__placeholder__');
   });
 
-  it('warns when user declines automatic PWAHead injection', async () => {
-    const confirmSequence = [true, false, false, false];
+  it('auto-adds <PWAHead /> when missing', async () => {
+    const confirmSequence = [true, false, false];
     let confirmIndex = 0;
     vi.mocked(prompts.confirm).mockImplementation(() => {
       const value = confirmSequence[confirmIndex] ?? false;
@@ -293,10 +293,9 @@ describe('interactive init', () => {
     await runInit();
 
     const output = logs.join('\n');
-    expect(output).toContain('Detected existing app\\layout.tsx; automatic <PWAHead /> insertion skipped.');
-    expect(output).toContain('Please add <PWAHead /> manually to enable PWA features.');
+    expect(output).toContain('Added <PWAHead /> to layout');
     const layout = readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8');
-    expect(layout).not.toContain('<PWAHead />');
+    expect(layout).toContain('<PWAHead />');
   });
 
   it('does not re-ask to insert PWAHead when already present', async () => {
@@ -355,7 +354,7 @@ describe('interactive init', () => {
   });
 
   it('keeps existing config options and does not overwrite plugin options from selection', async () => {
-    const confirmSequence = [true, true, true, false, false];
+    const confirmSequence = [true, false, false];
     let confirmIndex = 0;
     vi.mocked(prompts.confirm).mockImplementation(() => {
       const value = confirmSequence[confirmIndex] ?? false;

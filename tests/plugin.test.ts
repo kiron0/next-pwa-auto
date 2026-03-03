@@ -177,6 +177,10 @@ describe('withPWAAuto plugin', () => {
   it('reuses existing generated icons when skipGeneratedIcons is enabled', async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
+    const logs: string[] = [];
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation((...args) => {
+      logs.push(args.join(' '));
+    });
     const iconsDir = path.join(tmpDir, 'public', '_pwa', 'icons');
     fs.mkdirSync(iconsDir, { recursive: true });
     const existingIconPath = path.join(iconsDir, 'legacy-icon.png');
@@ -193,7 +197,11 @@ describe('withPWAAuto plugin', () => {
       expect(fs.existsSync(path.join(tmpDir, 'public', '_pwa', 'offline.html'))).toBe(true);
       expect(fs.existsSync(path.join(tmpDir, 'public', '_pwa', 'sw-register.js'))).toBe(true);
       expect(fs.existsSync(existingIconPath)).toBe(true);
+      expect(logs.join('\n')).toContain(
+        '[next-pwa-auto] ' + String.fromCharCode(0x267A) + ' Reusing existing generated icons.'
+      );
     } finally {
+      consoleLogSpy.mockRestore();
       process.env.NODE_ENV = originalNodeEnv;
     }
   });

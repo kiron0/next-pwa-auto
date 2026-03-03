@@ -175,32 +175,7 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
       );
     }
 
-    const shouldInsertPWAHead = skip || !hasPWAHead;
-    const shouldAskToInsertPWAHead = !skip && !hasPWAHead;
-
-    if (shouldAskToInsertPWAHead) {
-      const addPWAHead = await askConfirm('Add <PWAHead /> to your root layout?', false);
-      if (!addPWAHead) {
-        console.log(
-          chalk.yellow('  !'),
-          chalk.yellow(`Detected existing ${layoutHint}; automatic <PWAHead /> insertion skipped.`)
-        );
-        console.log(
-          chalk.yellow('  ?'),
-          chalk.yellow('Please add <PWAHead /> manually to enable PWA features.')
-        );
-      } else {
-        const injected = injectPWAHead(projectRoot, routerType);
-        if (injected === 'already') {
-          console.log(chalk.green('  ?'), chalk.gray('PWAHead already present in layout'));
-        } else if (injected === 'injected') {
-          console.log(chalk.green('  ?'), chalk.gray('Added <PWAHead /> to layout'));
-        } else {
-          console.log(chalk.yellow('  ?'), chalk.gray('Could not auto-add <PWAHead />. Manual:'));
-          printPWAHeadManualInstructions(routerType);
-        }
-      }
-    } else if (shouldInsertPWAHead) {
+    if (!hasPWAHead) {
       const injected = injectPWAHead(projectRoot, routerType);
       if (injected === 'already') {
         console.log(chalk.green('  ?'), chalk.gray('PWAHead already present in layout'));

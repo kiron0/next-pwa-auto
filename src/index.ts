@@ -168,8 +168,7 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
   const forceRegenIcons = process.env.NEXT_PWA_AUTO_FORCE_ICON_REGEN === '1';
   const shouldGenerateFromSource =
     Boolean(config.icon) || Boolean(findSourceIcon(publicDir)) || forceRegenIcons;
-  const shouldPreserveIcons =
-    config.skipGeneratedIcons && existingIcons.length > 0 && !shouldGenerateFromSource;
+  const shouldPreserveIcons = existingIcons.length > 0 && !shouldGenerateFromSource;
   const shouldGenerateIcons =
     existingIcons.length === 0 || shouldGenerateFromSource;
 
@@ -200,7 +199,7 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
     });
     icons = scheduleIconGeneration(config);
   } else if (shouldPreserveIcons) {
-    console.log('[next-pwa-auto] ♻ Reusing existing generated icons.');
+    console.log('[next-pwa-auto] ' + String.fromCharCode(0x267A) + ' Reusing existing generated icons.');
   }
   const manifest = generateManifest(config, icons);
   writeManifest(manifest, config.projectRoot);
