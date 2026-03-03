@@ -14,6 +14,7 @@ const PLACEHOLDER_ICON_VALUE = '__placeholder__';
 const KEEP_GENERATED_ICONS_VALUE = '__keep_generated_icons__';
 const PWA_ICONS_PATH = path.join('public', '_pwa', 'icons');
 const PWA_ICONS_PATH_PRETTY = 'public/_pwa/icons';
+type IconSelection = { iconPath: string | null; reuseExistingIcons: boolean };
 
 interface InitOptions {
   skip?: boolean;
@@ -70,10 +71,10 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
 
     const hasExistingGeneratedIcons = hasGeneratedPwaIcons(projectRoot);
     const selectedIcon = skip
-      ? null
+      ? { iconPath: null, reuseExistingIcons: false }
       : await pickSourceIcon(projectRoot, publicDir, hasExistingGeneratedIcons);
 
-    const configUpdateResult = updateNextConfig(projectRoot, selectedIcon);
+    const configUpdateResult = updateNextConfig(projectRoot, selectedIcon.iconPath);
     if (configUpdateResult === 'already') {
       console.log(chalk.green('  ?'), chalk.gray('next-pwa-auto already configured in next.config'));
     } else if (configUpdateResult === 'updated') {
@@ -84,8 +85,10 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
       printManualSetupInstructions(configFile, routerType);
     }
 
-    if (selectedIcon) {
-      console.log(chalk.green('  ?'), chalk.gray('Selected icon:'), chalk.cyan(selectedIcon));
+    if (selectedIcon.iconPath) {
+      console.log(chalk.green('  ?'), chalk.gray('Selected icon:'), chalk.cyan(selectedIcon.iconPath));
+    } else if (selectedIcon.reuseExistingIcons) {
+      console.log(chalk.green('  ?'), chalk.gray(`Using existing generated icons at ${PWA_ICONS_PATH_PRETTY}.`));
     } else {
       console.log(chalk.yellow('  ?'), chalk.gray('No source icon selected. Placeholder will be used.'));
     }
@@ -160,9 +163,9 @@ async function pickSourceIcon(
   projectRoot: string,
   publicDir: string,
   warnOnOverwrite: boolean
-): Promise<string | null> {
+): Promise<IconSelection> {
   if (!fs.existsSync(publicDir)) {
-    return null;
+    return { iconPath: null, reuseExistingIcons: false };
   }
 
   const publicIcons = listPublicIcons(publicDir);
@@ -175,7 +178,7 @@ async function pickSourceIcon(
         )
       );
     }
-    return null;
+    return { iconPath: null, reuseExistingIcons: warnOnOverwrite };
   }
 
   if (warnOnOverwrite) {
@@ -211,21 +214,21 @@ async function pickSourceIcon(
       if (!confirmPlaceholder) {
         return selectIcon();
       }
-      return null;
+      return { iconPath: null, reuseExistingIcons: false };
     }
 
     if (selected === KEEP_GENERATED_ICONS_VALUE) {
-      return null;
+      return { iconPath: null, reuseExistingIcons: true };
     }
 
     if (selected && typeof selected === 'string') {
       const source = path.join('public', selected).replace(/\\/g, '/');
       if (fs.existsSync(path.join(projectRoot, source))) {
-        return source;
+        return { iconPath: source, reuseExistingIcons: false };
       }
     }
 
-    return null;
+    return { iconPath: null, reuseExistingIcons: false };
   };
 
   return selectIcon();
@@ -466,7 +469,7 @@ function injectPWAHead(
 
     const htmlMatch = modified.match(/<html(\s[^>]*)?>/i);
     if (htmlMatch && htmlMatch[0]) {
-      const headBlock = '<head>\n        <PWAHead />\n      </head>\n      ';
+      const headBlock = '<head>\n        <PWAHead />\n      </head>';
       modified = modified.replace(htmlMatch[0], `${htmlMatch[0]}\n      ${headBlock}`);
       fs.writeFileSync(layoutPath, modified, 'utf-8');
       return 'injected';
@@ -474,7 +477,7 @@ function injectPWAHead(
 
     const bodyMatch = modified.match(/<body(\s[^>]*)?>/i);
     if (bodyMatch && bodyMatch[0]) {
-      const replacement = `<head>\n        <PWAHead />\n      </head>\n      ${bodyMatch[0]}`;
+      const replacement = `<head>\n        <PWAHead />\n      </head>${bodyMatch[0]}`;
       modified = modified.replace(bodyMatch[0], replacement);
       fs.writeFileSync(layoutPath, modified, 'utf-8');
       return 'injected';

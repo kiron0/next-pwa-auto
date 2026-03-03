@@ -194,10 +194,10 @@ export async function runDoctor(): Promise<void> {
   for (const check of checks) {
     const icon =
       check.status === 'pass'
-        ? chalk.green('[PASS]')
+        ? chalk.green('✅')
         : check.status === 'warn'
-          ? chalk.yellow('[WARN]')
-          : chalk.red('[FAIL]');
+          ? chalk.yellow('⚠️')
+          : chalk.red('❌');
 
     const label = chalk.bold(check.label);
 
@@ -217,14 +217,19 @@ export async function runDoctor(): Promise<void> {
   console.log('');
   console.log(chalk.gray('-'.repeat(45)));
 
-  if (failCount === 0) {
+  if (failCount === 0 && warnCount === 0) {
     console.log(
-      chalk.green.bold('  PASS: PWA setup looks good!'),
+      chalk.green.bold('  ✅ PWA setup looks good!'),
+      chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
+    );
+  } else if (failCount === 0) {
+    console.log(
+      chalk.yellow.bold('  ⚠️ PWA setup is ready with warnings.'),
       chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
     );
   } else {
     console.log(
-      chalk.red.bold(`  WARN: ${failCount} issue(s) found.`),
+      chalk.red.bold(`  ❌ ${failCount} issue(s) found.`),
       chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
     );
   }

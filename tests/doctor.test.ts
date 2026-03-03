@@ -69,6 +69,7 @@ describe('doctor command', () => {
     const out = logs.join('\n');
     expect(out).toContain('Source icon');
     expect(out).toContain('Generated PWA icons are already present in public/_pwa/icons.');
+    expect(out).toContain('⚠️ PWA setup is ready with warnings.');
   });
 
   it('fails source-icon check if no source icon and no generated icons', async () => {

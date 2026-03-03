@@ -160,7 +160,7 @@ describe('interactive init', () => {
 
     const output = logs.join('\n');
     expect(output).toContain('Detected existing generated icons at public/_pwa/icons.');
-    expect(output).toContain('No source icon selected. Placeholder will be used.');
+    expect(output).toContain('Using existing generated icons at public/_pwa/icons.');
     const config = readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8');
     expect(config).toContain('withPWAAuto()');
     expect(config).not.toContain('public/icon.png');
@@ -208,6 +208,51 @@ describe('interactive init', () => {
     expect(readCommandLog()).toEqual([]);
     const config = readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8');
     expect(config).toContain('withPWAAuto()');
+  });
+
+  it('does not offer keep-existing option when generated icons are absent', async () => {
+    const confirmSequence = [true, true, false, false];
+    let confirmIndex = 0;
+    vi.mocked(prompts.confirm).mockImplementation(() => {
+      const value = confirmSequence[confirmIndex] ?? false;
+      confirmIndex += 1;
+      return value as unknown as Promise<boolean>;
+    });
+    vi.mocked(prompts.isCancel).mockReturnValue(false);
+
+    const selectCalls: Array<Array<{ value: string }>> = [];
+    vi.mocked(prompts.select).mockImplementation(({ options }: { options: Array<{ value: string }> }) => {
+      selectCalls.push(options);
+      return Promise.resolve('icon.png');
+    });
+
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify({
+        name: 'interactive-no-generated-icons',
+        version: '1.0.0',
+        dependencies: {
+          next: '14.0.0',
+          'next-pwa-auto': '^0.1.1',
+        },
+      })
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+
+    writeFileSync(path.join(projectRoot, 'public', 'icon.png'), 'icon');
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head></head><body>{children}</body></html> }'
+    );
+
+    await runInit();
+
+    expect(selectCalls).toHaveLength(1);
+    const selectOptions = selectCalls[0];
+    expect(selectOptions?.map((option) => option.value)).not.toContain('__keep_generated_icons__');
+    expect(selectOptions?.map((option) => option.value)).toContain('__placeholder__');
   });
 
   it('updates next-config icon path when already configured and user selects a different icon', async () => {
