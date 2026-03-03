@@ -162,7 +162,7 @@ describe('interactive init', () => {
     expect(output).toContain('Detected existing generated icons at public/_pwa/icons.');
     expect(output).toContain('Using existing generated icons at public/_pwa/icons.');
     const config = readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8');
-    expect(config).toContain('withPWAAuto()');
+    expect(config).toContain('withPWAAuto({"skipGeneratedIcons":true})');
     expect(config).not.toContain('public/icon.png');
   });
 
@@ -203,11 +203,11 @@ describe('interactive init', () => {
 
     const output = logs.join('\n');
     expect(output).toContain(
-      'This is okay: build will continue with the current generated icons when no new source icon is selected.'
+      'This is okay: existing generated icons will be reused when no new source icon is selected.'
     );
     expect(readCommandLog()).toEqual([]);
     const config = readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8');
-    expect(config).toContain('withPWAAuto()');
+    expect(config).toContain('withPWAAuto({"skipGeneratedIcons":true})');
   });
 
   it('does not offer keep-existing option when generated icons are absent', async () => {

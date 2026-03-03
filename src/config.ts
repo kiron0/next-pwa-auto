@@ -6,6 +6,7 @@ const DEFAULTS: Omit<ResolvedConfig, 'projectRoot' | 'routerType' | 'packageInfo
   disable: false,
   offline: true,
   icon: null,
+  skipGeneratedIcons: false,
   manifest: {},
   workbox: {
     maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
@@ -34,6 +35,7 @@ export function resolveConfig(userConfig: PWAAutoConfig = {}): ResolvedConfig {
     disable: userConfig.disable ?? DEFAULTS.disable,
     offline: userConfig.offline ?? DEFAULTS.offline,
     icon: userConfig.icon ?? DEFAULTS.icon,
+    skipGeneratedIcons: userConfig.skipGeneratedIcons ?? DEFAULTS.skipGeneratedIcons,
     manifest: { ...DEFAULTS.manifest, ...userConfig.manifest },
     workbox: { ...DEFAULTS.workbox, ...userConfig.workbox },
     cacheStrategies: { ...DEFAULTS.cacheStrategies, ...userConfig.cacheStrategies },

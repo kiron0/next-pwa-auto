@@ -174,4 +174,27 @@ describe('withPWAAuto plugin', () => {
     const result = config.webpack!(webpackConfig, { isServer: false, dev: true });
     expect(result.plugins).toHaveLength(0);
   });
+  it('reuses existing generated icons when skipGeneratedIcons is enabled', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    const iconsDir = path.join(tmpDir, 'public', '_pwa', 'icons');
+    fs.mkdirSync(iconsDir, { recursive: true });
+    const existingIconPath = path.join(iconsDir, 'legacy-icon.png');
+    fs.writeFileSync(existingIconPath, 'existing-icon');
+
+    try {
+      const wrapper = withPWAAuto({ skipGeneratedIcons: true });
+      const config = wrapper({});
+
+      const headers = await config.headers!();
+      expect(headers.length).toBeGreaterThan(0);
+      expect(fs.existsSync(existingIconPath)).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, 'public', 'manifest.webmanifest'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, 'public', '_pwa', 'offline.html'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, 'public', '_pwa', 'sw-register.js'))).toBe(true);
+      expect(fs.existsSync(existingIconPath)).toBe(true);
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
 });

@@ -165,8 +165,9 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
   const existingIcons = fs.existsSync(iconsDir)
     ? fs.readdirSync(iconsDir).filter((f) => f.endsWith('.png'))
     : [];
+  const shouldPreserveIcons = config.skipGeneratedIcons && existingIcons.length > 0;
   const shouldGenerateIcons =
-    existingIcons.length === 0 || Boolean(config.icon) || Boolean(findSourceIcon(publicDir));
+    !shouldPreserveIcons && (existingIcons.length === 0 || Boolean(config.icon) || Boolean(findSourceIcon(publicDir)));
 
   if (fs.existsSync(iconsDir)) {
     icons = existingIcons.map((filename) => {
@@ -194,6 +195,8 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
       fs.unlinkSync(path.join(iconsDir, iconFile));
     });
     icons = scheduleIconGeneration(config);
+  } else if (shouldPreserveIcons) {
+    console.log('[next-pwa-auto] ♻ Reusing existing generated icons.');
   }
   const manifest = generateManifest(config, icons);
   writeManifest(manifest, config.projectRoot);

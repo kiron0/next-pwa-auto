@@ -10,7 +10,6 @@ interface DoctorCheck {
   message: string;
 }
 const APP_LAYOUT_FILES = ['layout.tsx', 'layout.jsx', 'layout.ts', 'layout.js'];
-const APP_ROOT_LAYOUT_PATH_HINT = 'app/layout.(ts|tsx|js|jsx) (or src/app/layout.(ts|tsx|js|jsx))';
 const PAGES_APP_FILES = ['_app.tsx', '_app.jsx', '_app.ts', '_app.js'];
 
 export async function runDoctor(): Promise<void> {
@@ -115,12 +114,13 @@ export async function runDoctor(): Promise<void> {
 
   if (appLayoutPath) {
     const hasPWAHead = hasPWAHeadInFile(appLayoutPath);
+    const appLayoutRelativePath = path.relative(projectRoot, appLayoutPath);
     checks.push({
       label: 'PWAHead (app layout)',
       status: hasPWAHead ? 'pass' : 'warn',
       message: hasPWAHead
-        ? `Found <PWAHead /> in ${path.relative(projectRoot, appLayoutPath)}`
-        : `Missing <PWAHead /> in ${path.relative(projectRoot, appLayoutPath)}${'\n  ' + 'Manual: Add <PWAHead /> inside <head> in ' + APP_ROOT_LAYOUT_PATH_HINT}`,
+        ? `Found <PWAHead /> in ${appLayoutRelativePath}`
+        : `Missing <PWAHead /> in ${appLayoutRelativePath}\n  Manual: Add <PWAHead /> inside <head> in ${appLayoutRelativePath}`,
     });
   }
 

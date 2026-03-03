@@ -74,7 +74,7 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
       ? { iconPath: null, reuseExistingIcons: false }
       : await pickSourceIcon(projectRoot, publicDir, hasExistingGeneratedIcons);
 
-    const configUpdateResult = updateNextConfig(projectRoot, selectedIcon.iconPath);
+    const configUpdateResult = updateNextConfig(projectRoot, selectedIcon);
     if (configUpdateResult === 'already') {
       console.log(chalk.green('  ?'), chalk.gray('next-pwa-auto already configured in next.config'));
     } else if (configUpdateResult === 'updated') {
@@ -89,8 +89,18 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
       console.log(chalk.green('  ?'), chalk.gray('Selected icon:'), chalk.cyan(selectedIcon.iconPath));
     } else if (selectedIcon.reuseExistingIcons) {
       console.log(chalk.green('  ?'), chalk.gray(`Using existing generated icons at ${PWA_ICONS_PATH_PRETTY}.`));
+      console.log(
+        chalk.yellow('  ?'),
+        chalk.yellow('Keep existing icons enabled. Existing icons will be reused and not regenerated.')
+      );
     } else {
       console.log(chalk.yellow('  ?'), chalk.gray('No source icon selected. Placeholder will be used.'));
+      if (hasExistingGeneratedIcons) {
+        console.log(
+          chalk.yellow('  ?'),
+          chalk.yellow(`If generated icons exist at ${PWA_ICONS_PATH_PRETTY}, they will be replaced by new generation.`)
+        );
+      }
     }
 
     if (skip || (await askConfirm('Add <PWAHead /> to your root layout?', true))) {
@@ -174,7 +184,7 @@ async function pickSourceIcon(
       console.log(chalk.gray('  ? Existing generated icons were found, but selecting a source icon from public/ is optional.'));
       console.log(
         chalk.gray(
-          '     This is okay: build will continue with the current generated icons when no new source icon is selected.'
+          '     This is okay: existing generated icons will be reused when no new source icon is selected.'
         )
       );
     }
@@ -207,7 +217,7 @@ async function pickSourceIcon(
     }
 
     if (selected === PLACEHOLDER_ICON_VALUE) {
-      const confirmPlaceholder = await askConfirm(
+    const confirmPlaceholder = await askConfirm(
         `You selected placeholder but ${publicIcons.length} icon image(s) already exist in public/. Proceed with placeholder?`,
         false
       );
@@ -307,10 +317,10 @@ function findNextConfigFile(projectRoot: string): string | null {
   return NEXT_CONFIG_FILES.find((filename) => fs.existsSync(path.join(projectRoot, filename))) || null;
 }
 
-function updateNextConfig(projectRoot: string, iconPath: string | null): ConfigUpdateResult {
+function updateNextConfig(projectRoot: string, selection: IconSelection): ConfigUpdateResult {
   const configFile = findNextConfigFile(projectRoot);
   if (!configFile) {
-    const content = buildNextConfigTemplate(iconPath);
+    const content = buildNextConfigTemplate(selection.iconPath, selection.reuseExistingIcons);
     fs.writeFileSync(path.join(projectRoot, 'next.config.mjs'), content, 'utf-8');
     return 'updated';
   }
@@ -319,12 +329,10 @@ function updateNextConfig(projectRoot: string, iconPath: string | null): ConfigU
   const content = sanitizeNextConfigContent(fs.readFileSync(configPath, 'utf-8'));
   const alreadyHasPlugin = content.includes('next-pwa-auto') || content.includes('withPWAAuto');
   if (alreadyHasPlugin) {
-    if (iconPath) {
-      const updated = replaceWithPWAAutoIcon(content, iconPath);
-      if (updated) {
-        fs.writeFileSync(configPath, updated, 'utf-8');
-        return 'updated';
-      }
+    const updated = replaceWithPWAAutoIcon(content, selection);
+    if (updated) {
+      fs.writeFileSync(configPath, updated, 'utf-8');
+      return 'updated';
     }
     const original = fs.readFileSync(configPath, 'utf-8');
     const cleaned = sanitizeNextConfigContent(original);
@@ -335,7 +343,7 @@ function updateNextConfig(projectRoot: string, iconPath: string | null): ConfigU
     return 'already';
   }
 
-  const injected = injectPluginIntoConfig(content, configFile, iconPath);
+  const injected = injectPluginIntoConfig(content, configFile, selection);
   if (!injected) {
     return 'manual';
   }
@@ -343,27 +351,62 @@ function updateNextConfig(projectRoot: string, iconPath: string | null): ConfigU
   return 'updated';
 }
 
-function replaceWithPWAAutoIcon(content: string, iconPath: string): string | null {
-  const replacement = `withPWAAuto(${JSON.stringify({ icon: iconPath })})(`;
-  const pattern = /withPWAAuto\s*\(\s*[\s\S]*?\)\s*\(/;
-  const nextIndex = content.search(pattern);
-  if (nextIndex === -1) {
+function replaceWithPWAAutoIcon(content: string, selection: IconSelection): string | null {
+  const callPattern = /withPWAAuto\s*\(\s*([\s\S]*?)\s*\)\s*\(/;
+  const callMatch = content.match(callPattern);
+  if (!callMatch) {
     return null;
   }
-  return content.replace(pattern, replacement);
+  const rawOptions = callMatch[1] ? callMatch[1].trim() : '';
+  let options = selection.iconPath || selection.reuseExistingIcons ? {} : null;
+  if (!rawOptions) {
+    options = {};
+  } else {
+    try {
+      const parsed = JSON.parse(rawOptions);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        options = { ...parsed } as Record<string, any>;
+      } else {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  if (!options) {
+    return null;
+  }
+
+  if (selection.iconPath) {
+    options.icon = selection.iconPath;
+  } else if (options.icon !== undefined) {
+    delete options.icon;
+  }
+
+  if (selection.reuseExistingIcons) {
+    options.skipGeneratedIcons = true;
+  } else {
+    delete options.skipGeneratedIcons;
+  }
+
+  const optionsString = withPWAAutoOptionsFromObject(options);
+  const replacement = `withPWAAuto${optionsString}(`;
+  return content.replace(callPattern, replacement);
 }
 
-function withPWAAutoCall(iconPath: string | null): string {
-  if (!iconPath) {
+function withPWAAutoCall(selection: IconSelection): string {
+  const options = withPWAAutoOptions(selection.iconPath, selection.reuseExistingIcons);
+  if (!options) {
     return 'withPWAAuto()(';
   }
-  return `withPWAAuto(${JSON.stringify({ icon: iconPath })})(`;
+  return `withPWAAuto(${options})(`;
 }
 
 function injectPluginIntoConfig(
   content: string,
   filename: string,
-  iconPath: string | null
+  selection: IconSelection
 ): string | null {
   const isTS = filename.endsWith('.ts') || filename.endsWith('.mts');
   const isESM = filename.endsWith('.mjs') || filename.endsWith('.mts');
@@ -371,7 +414,7 @@ function injectPluginIntoConfig(
   if (isTS || isESM) {
     const importLine = `import withPWAAuto from 'next-pwa-auto';\n`;
     if (content.includes('export default')) {
-      const replacement = `export default ${withPWAAutoCall(iconPath)}`;
+      const replacement = `export default ${withPWAAutoCall(selection)}`;
       const modified = importLine + content.replace(/export default\s+/, replacement);
       return appendCloseBracket(modified);
     }
@@ -380,7 +423,7 @@ function injectPluginIntoConfig(
 
   const requireLine = `const withPWAAuto = require('next-pwa-auto');\n`;
   if (content.includes('module.exports')) {
-    const replacement = `module.exports = ${withPWAAutoCall(iconPath)}`;
+    const replacement = `module.exports = ${withPWAAutoCall(selection)}`;
     const modified = requireLine + content.replace(/module\.exports\s*=\s*/, replacement);
     return appendCloseBracket(modified);
   }
@@ -437,9 +480,26 @@ function getBuildCommand(projectRoot: string): string {
   return `${label} run build`;
 }
 
-function buildNextConfigTemplate(iconPath: string | null): string {
-  const options = iconPath ? `(${JSON.stringify({ icon: iconPath })})` : '()';
-  return `import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto${options}(nextConfig);\n`;
+function buildNextConfigTemplate(iconPath: string | null, reuseExistingIcons: boolean): string {
+  const options = withPWAAutoOptions(iconPath, reuseExistingIcons);
+  const withCall = options.length > 0 ? `(${options})` : '()';
+  return `import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto${withCall}(nextConfig);\n`;
+}
+
+function withPWAAutoOptions(iconPath: string | null, reuseExistingIcons: boolean): string {
+  const options: Record<string, any> = {};
+  if (iconPath) {
+    options.icon = iconPath;
+  }
+  if (reuseExistingIcons) {
+    options.skipGeneratedIcons = true;
+  }
+  return Object.keys(options).length > 0 ? JSON.stringify(options) : '';
+}
+
+function withPWAAutoOptionsFromObject(options: Record<string, any>): string {
+  const keys = Object.keys(options);
+  return keys.length > 0 ? `(${JSON.stringify(options)})` : '()';
 }
 
 function injectPWAHead(

@@ -101,6 +101,7 @@ describe('config', () => {
       expect(config.disable).toBe(false);
       expect(config.offline).toBe(true);
       expect(config.icon).toBeNull();
+      expect(config.skipGeneratedIcons).toBe(false);
       expect(config.pwaDir).toBe('_pwa');
       expect(config.disableInDev).toBe(true);
       expect(config.swDest).toBe('sw.js');
@@ -111,12 +112,14 @@ describe('config', () => {
       const config = resolveConfig({
         offline: false,
         swDest: 'service-worker.js',
+        skipGeneratedIcons: true,
         manifest: { name: 'Custom Name' },
       });
       expect(config.offline).toBe(false);
       expect(config.swDest).toBe('service-worker.js');
       expect(config.manifest.name).toBe('Custom Name');
       expect(config.disableInDev).toBe(true);
+      expect(config.skipGeneratedIcons).toBe(true);
     });
     it('merges cacheStrategies with defaults', () => {
       const config = resolveConfig({

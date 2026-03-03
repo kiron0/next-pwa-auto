@@ -71,6 +71,116 @@ describe('doctor command', () => {
     expect(out).toContain('Generated PWA icons are already present in public/_pwa/icons.');
   });
 
+  it('reports PWAHead status in app layout', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-app-layout',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+    );
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      "import { PWAHead } from 'next-pwa-auto/head';\nexport default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html>; }"
+    );
+
+    await runDoctor();
+
+    const out = logs.join('\n');
+    expect(out).toContain('PWAHead (app layout):');
+    expect(out).toContain(`Found <PWAHead /> in ${path.join('app', 'layout.tsx')}`);
+  });
+
+  it('warns when PWAHead is missing in app layout', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-app-layout-missing-head',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+    );
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head></head><body>{children}</body></html>; }'
+    );
+
+    await runDoctor();
+
+    const out = logs.join('\n');
+    expect(out).toContain('PWAHead (app layout):');
+    expect(out).toContain('Missing <PWAHead /> in app\\layout.tsx');
+    expect(out).toContain('Manual: Add <PWAHead /> inside <head> in app\\layout.tsx');
+  });
+
+  it('warns when PWAHead is missing in pages _app', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-pages-layout-missing-head',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+    );
+
+    mkdirSync(path.join(projectRoot, 'pages'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'pages', '_app.tsx'),
+      'export default function App({ Component, pageProps }) { return <Component {...pageProps} />; }'
+    );
+
+    await runDoctor();
+
+    const out = logs.join('\n');
+    expect(out).toContain('PWAHead (pages layout):');
+    expect(out).toContain('Missing <PWAHead /> in pages\\_app.tsx');
+    expect(out).toContain('Manual: Add <PWAHead /> in pages/_app.tsx');
+  });
+
   it('fails source-icon check if no source icon and no generated icons', async () => {
     writeFileSync(
       path.join(projectRoot, 'package.json'),

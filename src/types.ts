@@ -2,6 +2,7 @@ export interface PWAAutoConfig {
   disable?: boolean;
   offline?: boolean;
   icon?: string;
+  skipGeneratedIcons?: boolean;
   manifest?: Partial<WebAppManifest>;
   workbox?: WorkboxConfig;
   cacheStrategies?: CacheStrategyConfig;
@@ -15,6 +16,7 @@ export interface ResolvedConfig {
   disable: boolean;
   offline: boolean;
   icon: string | null;
+  skipGeneratedIcons: boolean;
   manifest: Partial<WebAppManifest>;
   workbox: WorkboxConfig;
   cacheStrategies: CacheStrategyConfig;
