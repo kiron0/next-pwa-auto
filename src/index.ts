@@ -7,73 +7,145 @@ import { generateOfflinePage } from './offline';
 import { createSWWebpackPlugin, generateSWRegisterFile } from './sw';
 import { ManifestIcon, NextConfig, PWAAutoConfig } from './types';
 
+type BundlerMode = 'webpack' | 'turbopack';
+
 function withPWAAuto(pwaConfig: PWAAutoConfig = {}) {
   const config = resolveConfig(pwaConfig);
   if (config.disable) {
     return (nextConfig: NextConfig = {}): NextConfig => nextConfig;
   }
   let preBuildComplete = false;
+
+  const getBundlerMode = (nextConfig: NextConfig): BundlerMode => {
+    const args = process.argv.map((arg) => arg.toLowerCase());
+    if (args.includes('--webpack')) return 'webpack';
+    if (args.includes('--turbopack') || args.includes('--turbo')) return 'turbopack';
+
+    if (typeof nextConfig.webpack === 'function') return 'webpack';
+    if (nextConfig.turbopack) return 'turbopack';
+
+    const nextMajor = getProjectNextMajor(config.projectRoot);
+    if (nextMajor === null) return 'webpack';
+    return nextMajor >= 16 ? 'turbopack' : 'webpack';
+  };
+
+  const runPreBuildOnce = (dev: boolean) => {
+    if (preBuildComplete) return;
+    if (dev && config.disableInDev) return;
+    runPreBuildTasks(config);
+    preBuildComplete = true;
+  };
+
   return (nextConfig: NextConfig = {}): NextConfig => {
+    const bundler = getBundlerMode(nextConfig);
+    const shouldInjectHeaders = config.routerType !== 'pages';
+    const withTurbopackConfig = normalizeTurbopackConfig(nextConfig.turbopack);
+
+    const withHeaders = async () => {
+      const existingHeaders =
+        typeof nextConfig.headers === 'function' ? await nextConfig.headers() : [];
+      if (process.env.NODE_ENV !== 'test') {
+        runPreBuildOnce(process.env.NODE_ENV === 'development');
+      }
+      return [
+        ...existingHeaders,
+        {
+          source: '/manifest.webmanifest',
+          headers: [
+            {
+              key: 'Content-Type',
+              value: 'application/manifest+json',
+            },
+            {
+              key: 'Cache-Control',
+              value: 'public, max-age=0, must-revalidate',
+            },
+          ],
+        },
+        {
+          source: `/${config.swDest}`,
+          headers: [
+            {
+              key: 'Cache-Control',
+              value: 'public, max-age=0, must-revalidate',
+            },
+            {
+              key: 'Service-Worker-Allowed',
+              value: config.scope,
+            },
+          ],
+        },
+      ];
+    };
+
+    if (bundler === 'webpack') {
+      return {
+        ...nextConfig,
+        webpack(webpackConfig: any, context: any) {
+          const { isServer, dev } = context;
+          if (typeof nextConfig.webpack === 'function') {
+            webpackConfig = nextConfig.webpack(webpackConfig, context);
+          }
+          if (isServer) return webpackConfig;
+          if (dev && config.disableInDev) {
+            return webpackConfig;
+          }
+          runPreBuildOnce(dev);
+          const swPlugin = createSWWebpackPlugin(config);
+          if (swPlugin) {
+            webpackConfig.plugins.push(swPlugin);
+          }
+          return webpackConfig;
+        },
+        ...(withTurbopackConfig ? { turbopack: withTurbopackConfig } : {}),
+        ...(shouldInjectHeaders
+          ? {
+              async headers() {
+                return withHeaders();
+              },
+            }
+          : {}),
+      };
+    }
+
     return {
       ...nextConfig,
-      webpack(webpackConfig: any, context: any) {
-        const { isServer, dev } = context;
-        if (typeof nextConfig.webpack === 'function') {
-          webpackConfig = nextConfig.webpack(webpackConfig, context);
-        }
-        if (isServer) return webpackConfig;
-        if (dev && config.disableInDev) {
-          return webpackConfig;
-        }
-        if (!preBuildComplete) {
-          runPreBuildTasks(config);
-          preBuildComplete = true;
-        }
-        const swPlugin = createSWWebpackPlugin(config);
-        if (swPlugin) {
-          webpackConfig.plugins.push(swPlugin);
-        }
-        return webpackConfig;
-      },
-      ...(config.routerType !== 'pages'
+      ...(withTurbopackConfig ? { turbopack: withTurbopackConfig } : { turbopack: {} }),
+      ...(shouldInjectHeaders
         ? {
             async headers() {
-              const existingHeaders =
-                typeof nextConfig.headers === 'function' ? await nextConfig.headers() : [];
-              return [
-                ...existingHeaders,
-                {
-                  source: '/manifest.webmanifest',
-                  headers: [
-                    {
-                      key: 'Content-Type',
-                      value: 'application/manifest+json',
-                    },
-                    {
-                      key: 'Cache-Control',
-                      value: 'public, max-age=0, must-revalidate',
-                    },
-                  ],
-                },
-                {
-                  source: `/${config.swDest}`,
-                  headers: [
-                    {
-                      key: 'Cache-Control',
-                      value: 'public, max-age=0, must-revalidate',
-                    },
-                    {
-                      key: 'Service-Worker-Allowed',
-                      value: config.scope,
-                    },
-                  ],
-                },
-              ];
+              return withHeaders();
             },
           }
         : {}),
     };
   };
+}
+
+function getProjectNextMajor(projectRoot: string): number | null {
+  try {
+    const packageJsonPath = path.join(projectRoot, 'package.json');
+    const raw = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const nextVersion = raw?.dependencies?.next || raw?.devDependencies?.next;
+    if (typeof nextVersion !== 'string') return null;
+    const match = nextVersion.match(/\d+/);
+    return match ? Number(match[0]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeTurbopackConfig(turbopackConfig: NextConfig['turbopack']): any | null {
+  if (!turbopackConfig) {
+    return null;
+  }
+  if (typeof turbopackConfig === 'function') {
+    return (config: any, options: any) => {
+      const maybeConfig = turbopackConfig(config, options);
+      return maybeConfig || config;
+    };
+  }
+  return { ...turbopackConfig };
 }
 
 function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {

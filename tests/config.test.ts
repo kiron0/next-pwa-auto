@@ -133,7 +133,7 @@ describe('config', () => {
   });
   describe('getPublicDir', () => {
     it('returns public directory path', () => {
-      expect(getPublicDir('/my/project')).toBe('/my/project/public');
+      expect(getPublicDir('/my/project')).toBe(path.join('/my/project', 'public'));
     });
   });
   describe('getPwaOutputDir', () => {

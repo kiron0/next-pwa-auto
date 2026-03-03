@@ -139,6 +139,7 @@ Place a `icon.png` or `icon.svg` (512×512 recommended) in your `public/` direct
 ```bash
 next build
 ```
+`next-pwa-auto` auto-detects whether your project runs with Webpack or Turbopack and configures build integration accordingly.
 
 Your app is now a PWA. ✅
 

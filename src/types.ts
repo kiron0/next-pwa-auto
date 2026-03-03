@@ -100,5 +100,6 @@ export type CacheStrategy =
   | 'cacheOnly';
 export interface NextConfig {
   webpack?: (config: any, context: any) => any;
+  turbopack?: any;
   [key: string]: any;
 }

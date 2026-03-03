@@ -29,6 +29,73 @@ describe('withPWAAuto plugin', () => {
     expect(config).toBeDefined();
     expect(typeof config.webpack).toBe('function');
   });
+  it('uses webpack by default when Next version is < 16', () => {
+    const wrapper = withPWAAuto();
+    const config = wrapper({});
+    expect(typeof config.webpack).toBe('function');
+    expect(config.turbopack).toBeUndefined();
+  });
+  it('uses turbopack for Next 16+ when no webpack flag is provided', () => {
+    const originalArgv = [...process.argv];
+    process.argv = ['node', 'next', 'build'];
+    try {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({ name: 'plugin-test', version: '1.0.0', dependencies: { next: '16.1.0' } })
+      );
+
+      const wrapper = withPWAAuto();
+      const config = wrapper({});
+      expect(config.webpack).toBeUndefined();
+      expect(config.turbopack).toBeDefined();
+    } finally {
+      process.argv = originalArgv;
+    }
+  });
+  it('uses webpack when --webpack is explicitly set on Next 16+', () => {
+    const originalArgv = [...process.argv];
+    process.argv = ['node', 'next', 'build', '--webpack'];
+    try {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({ name: 'plugin-test', version: '1.0.0', dependencies: { next: '16.1.0' } })
+      );
+
+      const wrapper = withPWAAuto();
+      const config = wrapper({});
+      expect(typeof config.webpack).toBe('function');
+      expect(config.turbopack).toBeUndefined();
+    } finally {
+      process.argv = originalArgv;
+    }
+  });
+  it('defaults to Turbopack on latest Next.js projects when no bundler flag is provided', async () => {
+    const originalArgv = [...process.argv];
+    process.argv = ['node', 'next', 'build'];
+    try {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({
+          name: 'plugin-test',
+          version: '1.0.0',
+          devDependencies: { next: '^16.0.0' },
+        })
+      );
+
+      const wrapper = withPWAAuto();
+      const config = wrapper({});
+      expect(config.webpack).toBeUndefined();
+      expect(config.turbopack).toEqual({});
+      expect(config.headers).toBeDefined();
+      const headers = await config.headers!();
+      expect(Array.isArray(headers)).toBe(true);
+      expect(headers.some((h: { source: string }) => h.source === '/manifest.webmanifest')).toBe(
+        true
+      );
+    } finally {
+      process.argv = originalArgv;
+    }
+  });
   it('returns identity function when disabled', () => {
     const wrapper = withPWAAuto({ disable: true });
     const nextConfig = { reactStrictMode: true };
