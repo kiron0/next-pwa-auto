@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
-import { detectRouterType, getPublicDir, readPackageJson } from '../config';
+import { detectRouterType, getPublicDir, isNextProject, readPackageJson } from '../config';
 import { findSourceIcon } from '../icons/utils';
 
 interface DoctorCheck {
@@ -14,17 +14,25 @@ export async function runDoctor(): Promise<void> {
   const projectRoot = process.cwd();
   const checks: DoctorCheck[] = [];
   console.log('');
-  console.log(chalk.bold.blue('🩺 next-pwa-auto doctor'));
-  console.log(chalk.gray('─'.repeat(45)));
+  console.log(chalk.bold.blue('[Doctor] next-pwa-auto'));
+  console.log(chalk.gray('-'.repeat(45)));
   console.log('');
   const pkgPath = path.join(projectRoot, 'package.json');
+
+  if (!isNextProject(projectRoot)) {
+    checks.push({
+      label: 'Next.js project',
+      status: 'fail',
+      message: 'No Next.js project detected - this tool is only valid for Next.js apps',
+    });
+  }
 
   if (fs.existsSync(pkgPath)) {
     const pkg = readPackageJson(projectRoot);
     checks.push({
       label: 'package.json',
       status: 'pass',
-      message: `Found — name: "${pkg.name}"`,
+      message: `Found - name: "${pkg.name}"`,
     });
 
     try {
@@ -44,7 +52,7 @@ export async function runDoctor(): Promise<void> {
         checks.push({
           label: 'next-pwa-auto installed',
           status: 'warn',
-          message: 'Not found in dependencies — is it linked?',
+          message: 'Not found in dependencies - is it linked?',
         });
       }
     } catch {}
@@ -101,6 +109,10 @@ export async function runDoctor(): Promise<void> {
 
   const publicDir = getPublicDir(projectRoot);
   const sourceIcon = findSourceIcon(publicDir);
+  const pwaIconsDir = path.join(publicDir, '_pwa', 'icons');
+  const hasGeneratedIcons = fs.existsSync(pwaIconsDir)
+    ? fs.readdirSync(pwaIconsDir).some((file) => file.endsWith('.png'))
+    : false;
 
   if (sourceIcon) {
     const iconName = path.basename(sourceIcon);
@@ -110,13 +122,15 @@ export async function runDoctor(): Promise<void> {
     checks.push({
       label: 'Source icon',
       status: sizeKB >= 1 ? 'pass' : 'warn',
-      message: `Found: ${iconName} (${sizeKB}KB)${sizeKB < 50 ? ' — consider using a higher resolution source' : ''}`,
+      message: `Found: ${iconName} (${sizeKB}KB)${sizeKB < 50 ? ' - consider using a higher resolution source' : ''}`,
     });
   } else {
     checks.push({
       label: 'Source icon',
-      status: 'fail',
-      message: 'No source icon found — place icon.png or icon.svg in public/',
+      status: hasGeneratedIcons ? 'pass' : 'fail',
+      message: hasGeneratedIcons
+        ? 'Generated PWA icons are already present in public/_pwa/icons.'
+        : 'No source icon found - add icon.png or icon.svg in public/ (or run build to generate placeholder icons)',
     });
   }
 
@@ -127,7 +141,7 @@ export async function runDoctor(): Promise<void> {
     checks.push({
       label: 'Manifest',
       status: 'pass',
-      message: `User-defined ${existingManifest} found — will be merged with auto-generated`,
+      message: `User-defined ${existingManifest} found - will be merged with auto-generated`,
     });
   } else {
     checks.push({
@@ -151,7 +165,7 @@ export async function runDoctor(): Promise<void> {
         message:
           iconFiles.length > 0
             ? `${iconFiles.length} icons in _pwa/icons/`
-            : 'Icons directory exists but is empty — run a build',
+            : 'Icons directory exists but is empty - run a build',
       });
     }
 
@@ -162,13 +176,13 @@ export async function runDoctor(): Promise<void> {
       status: fs.existsSync(offlinePage) ? 'pass' : 'warn',
       message: fs.existsSync(offlinePage)
         ? 'Offline fallback page ready'
-        : 'Not generated yet — run a build',
+        : 'Not generated yet - run a build',
     });
   } else {
     checks.push({
       label: 'Generated assets',
       status: 'warn',
-      message: 'No _pwa/ directory — run `next build` to generate assets',
+      message: 'No _pwa/ directory - run `next build` to generate assets',
     });
   }
   checks.push({
@@ -180,10 +194,10 @@ export async function runDoctor(): Promise<void> {
   for (const check of checks) {
     const icon =
       check.status === 'pass'
-        ? chalk.green('✅')
+        ? chalk.green('[PASS]')
         : check.status === 'warn'
-          ? chalk.yellow('⚠️ ')
-          : chalk.red('❌');
+          ? chalk.yellow('[WARN]')
+          : chalk.red('[FAIL]');
 
     const label = chalk.bold(check.label);
 
@@ -201,16 +215,16 @@ export async function runDoctor(): Promise<void> {
   const passCount = checks.filter((c) => c.status === 'pass').length;
 
   console.log('');
-  console.log(chalk.gray('─'.repeat(45)));
+  console.log(chalk.gray('-'.repeat(45)));
 
   if (failCount === 0) {
     console.log(
-      chalk.green.bold('  🎉 PWA setup looks good!'),
+      chalk.green.bold('  PASS: PWA setup looks good!'),
       chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
     );
   } else {
     console.log(
-      chalk.red.bold(`  ⚠ ${failCount} issue(s) found.`),
+      chalk.red.bold(`  WARN: ${failCount} issue(s) found.`),
       chalk.gray(`(${passCount} passed, ${warnCount} warnings)`)
     );
   }

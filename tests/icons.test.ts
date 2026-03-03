@@ -146,5 +146,80 @@ describe('icons', () => {
       expect(result).not.toBeNull();
       expect(result!.sourceIcon).toContain('custom-logo.png');
     });
+    it('generates favicon.ico from source icon', async () => {
+      const customDir = path.join(tmpDir, 'assets');
+      fs.mkdirSync(customDir, { recursive: true });
+      const buffer = await sharp({
+        create: {
+          width: 256,
+          height: 256,
+          channels: 4,
+          background: { r: 255, g: 0, b: 255, alpha: 1 },
+        },
+      })
+        .png()
+        .toBuffer();
+      fs.writeFileSync(path.join(customDir, 'custom-logo.png'), buffer);
+      const config = resolveConfig({ icon: './assets/custom-logo.png' });
+
+      await generateIcons(config);
+
+      const faviconPath = path.join(tmpDir, 'public', 'favicon.ico');
+      expect(fs.existsSync(faviconPath)).toBe(true);
+      const stats = fs.statSync(faviconPath);
+      expect(stats.size).toBeGreaterThan(0);
+    });
+
+    it('does not overwrite existing public/favicon.ico', async () => {
+      const customDir = path.join(tmpDir, 'assets');
+      fs.mkdirSync(customDir, { recursive: true });
+      const buffer = await sharp({
+        create: {
+          width: 256,
+          height: 256,
+          channels: 4,
+          background: { r: 255, g: 255, b: 0, alpha: 1 },
+        },
+      })
+        .png()
+        .toBuffer();
+
+      fs.writeFileSync(path.join(tmpDir, 'public', 'favicon.ico'), 'existing-favicon');
+      fs.writeFileSync(path.join(customDir, 'custom-logo.png'), buffer);
+      const config = resolveConfig({ icon: './assets/custom-logo.png' });
+
+      await generateIcons(config);
+
+      expect(fs.readFileSync(path.join(tmpDir, 'public', 'favicon.ico'), 'utf-8')).toBe(
+        'existing-favicon'
+      );
+    });
+
+    it('does not generate public/favicon.ico when app/favicon.ico exists', async () => {
+      const customDir = path.join(tmpDir, 'assets');
+      fs.mkdirSync(customDir, { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, 'app'), { recursive: true });
+      const appFaviconPath = path.join(tmpDir, 'app', 'favicon.ico');
+      fs.writeFileSync(appFaviconPath, 'app-favicon');
+
+      const buffer = await sharp({
+        create: {
+          width: 256,
+          height: 256,
+          channels: 4,
+          background: { r: 0, g: 255, b: 255, alpha: 1 },
+        },
+      })
+        .png()
+        .toBuffer();
+      fs.writeFileSync(path.join(customDir, 'custom-logo.png'), buffer);
+      const config = resolveConfig({ icon: './assets/custom-logo.png' });
+
+      await generateIcons(config);
+
+      const publicFavicon = path.join(tmpDir, 'public', 'favicon.ico');
+      expect(fs.existsSync(publicFavicon)).toBe(false);
+      expect(fs.readFileSync(appFaviconPath, 'utf-8')).toBe('app-favicon');
+    });
   });
 });

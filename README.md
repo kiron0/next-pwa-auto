@@ -139,6 +139,7 @@ Place a `icon.png` or `icon.svg` (512×512 recommended) in your `public/` direct
 ```bash
 next build
 ```
+
 `next-pwa-auto` auto-detects whether your project runs with Webpack or Turbopack and configures build integration accordingly.
 
 Your app is now a PWA. ✅
@@ -405,7 +406,7 @@ $ npx next-pwa-auto doctor
 
 ### `npx next-pwa-auto init`
 
-Interactive setup wizard for new projects:
+Interactive setup wizard for new projects (zero-config default):
 
 ```bash
 $ npx next-pwa-auto init
@@ -415,9 +416,13 @@ $ npx next-pwa-auto init
   Project: my-app
   Router:  App Router
 
-  ✅ Added withPWAAuto() to next.config.mjs
-  ✅ Source icon found: icon.png
-  ✅ Added <PWAHead /> to layout
+  ✓ Set up next-pwa-auto in this project?
+  ✓ next-pwa-auto found in dependencies
+  ✓ Updated next config to use withPWAAuto
+  ✓ Select icon file from public/ (or choose placeholder):
+  ✓ Added <PWAHead /> to layout
+  ✓ Run next build now to generate PWA assets?
+  ✓ Run next-pwa-auto doctor now?
 ─────────────────────────────────────────────
   ✨ Setup complete!
 
@@ -430,10 +435,18 @@ $ npx next-pwa-auto init
 What `init` does:
 
 1. Detects your router type (App / Pages)
-2. Injects `withPWAAuto()` into your `next.config.{js,ts,mjs}`
-3. Adds `<PWAHead />` to your root layout
-4. Checks for a source icon
-5. Prints next steps
+2. Installs `next-pwa-auto` if missing
+3. Injects `withPWAAuto()` into your `next.config.{js,ts,mts}` (adds `icon` when selected)
+4. Adds `<PWAHead />` to your root layout
+5. Selects an icon from `public/` or uses a placeholder
+6. Optionally runs `next build`
+7. Optionally runs `next-pwa-auto doctor`
+
+Run all steps in auto mode with:
+
+```bash
+npx next-pwa-auto init --skip
+```
 
 ---
 

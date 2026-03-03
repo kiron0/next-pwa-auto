@@ -81,6 +81,17 @@ export function detectRouterType(projectRoot: string): 'app' | 'pages' | 'both' 
   return 'pages';
 }
 
+export function isNextProject(projectRoot: string): boolean {
+  const packagePath = path.join(projectRoot, 'package.json');
+  try {
+    const raw = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
+    const deps = { ...raw.dependencies, ...raw.devDependencies };
+    return typeof deps?.next === 'string';
+  } catch {
+    return false;
+  }
+}
+
 export function getPublicDir(projectRoot: string): string {
   return path.join(projectRoot, 'public');
 }

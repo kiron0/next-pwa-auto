@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { getPublicDir, getPwaOutputDir, resolveConfig } from './config';
-import { ensureDir } from './icons/utils';
+import { getPublicDir, getPwaOutputDir, isNextProject, resolveConfig } from './config';
+import { ensureDir, findSourceIcon } from './icons/utils';
 import { generateManifest, writeManifest } from './manifest';
 import { generateOfflinePage } from './offline';
 import { createSWWebpackPlugin, generateSWRegisterFile } from './sw';
@@ -11,6 +11,12 @@ type BundlerMode = 'webpack' | 'turbopack';
 
 function withPWAAuto(pwaConfig: PWAAutoConfig = {}) {
   const config = resolveConfig(pwaConfig);
+  if (!isNextProject(config.projectRoot)) {
+    throw new Error(
+      'next-pwa-auto only works in a Next.js project. Ensure Next.js is installed and run this from a Next.js app directory.'
+    );
+  }
+
   if (config.disable) {
     return (nextConfig: NextConfig = {}): NextConfig => nextConfig;
   }
@@ -156,8 +162,13 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
   ensureDir(pwaDir);
   let icons: ManifestIcon[] = [];
   const iconsDir = path.join(pwaDir, 'icons');
+  const existingIcons = fs.existsSync(iconsDir)
+    ? fs.readdirSync(iconsDir).filter((f) => f.endsWith('.png'))
+    : [];
+  const shouldGenerateIcons =
+    existingIcons.length === 0 || Boolean(config.icon) || Boolean(findSourceIcon(publicDir));
+
   if (fs.existsSync(iconsDir)) {
-    const existingIcons = fs.readdirSync(iconsDir).filter((f) => f.endsWith('.png'));
     icons = existingIcons.map((filename) => {
       const match = filename.match(/icon-(\d+)x(\d+)(-maskable)?\.png/);
       if (match) {
@@ -175,7 +186,13 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
       };
     });
   }
-  if (icons.length === 0) {
+  if (shouldGenerateIcons) {
+    const existingFiles = fs.existsSync(iconsDir)
+      ? fs.readdirSync(iconsDir).filter((f) => f.endsWith('.png'))
+      : [];
+    existingFiles.forEach((iconFile) => {
+      fs.unlinkSync(path.join(iconsDir, iconFile));
+    });
     icons = scheduleIconGeneration(config);
   }
   const manifest = generateManifest(config, icons);

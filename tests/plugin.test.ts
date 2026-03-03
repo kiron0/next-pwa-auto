@@ -12,7 +12,12 @@ describe('withPWAAuto plugin', () => {
     vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     fs.writeFileSync(
       path.join(tmpDir, 'package.json'),
-      JSON.stringify({ name: 'plugin-test', description: 'Testing', version: '1.0.0' })
+      JSON.stringify({
+        name: 'plugin-test',
+        description: 'Testing',
+        version: '1.0.0',
+        dependencies: { next: '14.0.0' },
+      })
     );
   });
   afterEach(() => {
@@ -68,6 +73,15 @@ describe('withPWAAuto plugin', () => {
     } finally {
       process.argv = originalArgv;
     }
+  });
+  it('rejects using withPWAAuto outside a Next.js project', () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'package.json'),
+      JSON.stringify({ name: 'plugin-test', version: '1.0.0' })
+    );
+    expect(() => withPWAAuto()).toThrow(
+      'next-pwa-auto only works in a Next.js project. Ensure Next.js is installed and run this from a Next.js app directory.'
+    );
   });
   it('defaults to Turbopack on latest Next.js projects when no bundler flag is provided', async () => {
     const originalArgv = [...process.argv];

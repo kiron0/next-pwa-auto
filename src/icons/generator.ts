@@ -63,6 +63,17 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
       purpose: 'any',
     });
   }
+
+  const existingFavicon = getExistingFaviconPath(config.projectRoot);
+  if (!existingFavicon) {
+    const faviconPath = path.join(publicDir, 'favicon.ico');
+    await generateFavicon(sourceBuffer, faviconPath);
+  } else {
+    console.log(
+      `[next-pwa-auto] ℹ Skipping favicon generation because existing favicon exists: ${path.relative(config.projectRoot, existingFavicon)}`
+    );
+  }
+
   for (const size of MASKABLE_SIZES) {
     const filename = `icon-${size}x${size}-maskable.png`;
     const outputPath = path.join(iconsDir, filename);
@@ -96,6 +107,39 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
   }
   console.log(`[next-pwa-auto] ✅ Generated ${icons.length} icons from ${sourceName}`);
   return { icons, sourceIcon: sourceIcon || 'placeholder' };
+}
+
+async function generateFavicon(sourceBuffer: Buffer, outputPath: string): Promise<void> {
+  try {
+    await sharp(sourceBuffer)
+      .resize(48, 48, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .toFile(outputPath);
+  } catch {
+    await sharp(sourceBuffer)
+      .resize(48, 48, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toFile(outputPath);
+  }
+}
+
+function getExistingFaviconPath(projectRoot: string): string | null {
+  const candidates = [
+    path.join(projectRoot, 'public', 'favicon.ico'),
+    path.join(projectRoot, 'app', 'favicon.ico'),
+    path.join(projectRoot, 'src', 'app', 'favicon.ico'),
+  ];
+  for (const candidate of candidates) {
+    if (require('fs').existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 function getInitials(name: string): string {

@@ -1,6 +1,6 @@
 {
   "name": "next-pwa-auto",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Zero-config PWA plugin for Next.js 14+ — auto manifest, icons, service worker, and offline fallback",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -56,6 +56,7 @@
     "react": ">=18.0.0"
   },
   "dependencies": {
+    "@clack/prompts": "^1.0.1",
     "chalk": "^5.6.2",
     "commander": "^14.0.3",
     "sharp": "^0.34.5",
