@@ -445,10 +445,22 @@ function updateNextConfig(projectRoot: string): ConfigUpdateResult {
   }
 
   const injected = injectPluginIntoConfig(content, configFile);
-  if (!injected) {
+  if (injected) {
+    fs.writeFileSync(configPath, injected, 'utf-8');
+    return 'updated';
+  }
+
+  const wrappedConfig = buildFallbackWrappedConfig(configFile, rawContent);
+  if (!wrappedConfig) {
     return 'manual';
   }
-  fs.writeFileSync(configPath, injected, 'utf-8');
+
+  const backupPath = path.join(projectRoot, wrappedConfig.backupFileName);
+  if (!fs.existsSync(backupPath)) {
+    fs.writeFileSync(backupPath, rawContent, 'utf-8');
+  }
+
+  fs.writeFileSync(configPath, wrappedConfig.wrapperContent, 'utf-8');
   return 'updated';
 }
 
@@ -457,23 +469,148 @@ function injectPluginIntoConfig(
   filename: string
 ): string | null {
   const isTS = filename.endsWith('.ts') || filename.endsWith('.mts');
-  const isESM = filename.endsWith('.mjs') || filename.endsWith('.mts');
+  const isESM = isESMConfigFile(filename, content);
 
   if (isTS || isESM) {
-    const importLine = `import { withPWAAuto } from 'next-pwa-auto';\n`;
+    const importLine = `import withPWAAuto from 'next-pwa-auto';\n`;
     if (content.includes('export default')) {
       const replacement = 'export default withPWAAuto()(';
       const modified = importLine + content.replace(/export default\s+/, replacement);
       return appendCloseBracket(modified);
     }
+
+    const namedDefaultExport = content.match(
+      /export\s*\{\s*([A-Za-z_$][\w$]*)\s+as\s+default\s*\}\s*;?/
+    );
+    if (namedDefaultExport && namedDefaultExport[1]) {
+      const configIdentifier = namedDefaultExport[1];
+      const modified =
+        importLine +
+        content.replace(
+          /export\s*\{\s*([A-Za-z_$][\w$]*)\s+as\s+default\s*\}\s*;?/,
+          `export default withPWAAuto()(${configIdentifier});`
+        );
+      return modified;
+    }
+
+    const configIdentifier = findLikelyConfigIdentifier(content);
+    if (configIdentifier) {
+      return `${importLine}${content.trimEnd()}\n\nexport default withPWAAuto()(${configIdentifier});\n`;
+    }
     return null;
   }
 
-  const requireLine = `const { withPWAAuto } = require('next-pwa-auto');\n`;
+  const requireLine = "const withPWAAuto = require('next-pwa-auto').default;\n";
   if (content.includes('module.exports')) {
     const replacement = 'module.exports = withPWAAuto()(';
     const modified = requireLine + content.replace(/module\.exports\s*=\s*/, replacement);
     return appendCloseBracket(modified);
+  }
+
+  if (content.includes('exports.default')) {
+    const replacement = 'module.exports = withPWAAuto()(';
+    const modified = requireLine + content.replace(/exports\.default\s*=\s*/, replacement);
+    return appendCloseBracket(modified);
+  }
+
+  const configIdentifier = findLikelyConfigIdentifier(content);
+  if (configIdentifier) {
+    return `${requireLine}${content.trimEnd()}\n\nmodule.exports = withPWAAuto()(${configIdentifier});\n`;
+  }
+
+  return null;
+}
+
+function isESMConfigFile(filename: string, content: string): boolean {
+  if (filename.endsWith('.mjs') || filename.endsWith('.mts')) {
+    return true;
+  }
+  if (!filename.endsWith('.js')) {
+    return false;
+  }
+  return /\bexport\s+default\b|\bexport\s*\{|\bimport\s+/.test(content);
+}
+
+function findLikelyConfigIdentifier(content: string): string | null {
+  const matches = Array.from(content.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\b/g));
+  if (matches.length === 0) {
+    return null;
+  }
+
+  const names = matches.map((m) => m[1]).filter(Boolean) as string[];
+  const preferred =
+    names.find((name) => /^nextconfig$/i.test(name)) ||
+    names.find((name) => /config/i.test(name)) ||
+    names[0];
+
+  return preferred ?? null;
+}
+
+function buildFallbackWrappedConfig(
+  configFile: string,
+  originalContent: string
+): { backupFileName: string; wrapperContent: string } | null {
+  const parsed = path.parse(configFile);
+  const backupFileName = `${parsed.name}.base${parsed.ext}`;
+  const isTS = configFile.endsWith('.ts') || configFile.endsWith('.mts');
+  const isESM = isESMConfigFile(configFile, originalContent);
+
+  if (isTS) {
+    const importPath = `./${parsed.name}.base`;
+    return {
+      backupFileName,
+      wrapperContent: [
+        "import withPWAAuto from 'next-pwa-auto';",
+        `import * as baseConfigModule from '${importPath}';`,
+        '',
+        'const baseConfig =',
+        "  (baseConfigModule as Record<string, unknown>).default ??",
+        "  (baseConfigModule as Record<string, unknown>).nextConfig ??",
+        "  (baseConfigModule as Record<string, unknown>).config ??",
+        '  (baseConfigModule as Record<string, unknown>);',
+        '',
+        'export default withPWAAuto()(baseConfig as any);',
+        '',
+      ].join('\n'),
+    };
+  }
+
+  if (isESM) {
+    return {
+      backupFileName,
+      wrapperContent: [
+        "import withPWAAuto from 'next-pwa-auto';",
+        `import * as baseConfigModule from './${backupFileName}';`,
+        '',
+        'const baseConfig =',
+        '  baseConfigModule.default ??',
+        '  baseConfigModule.nextConfig ??',
+        '  baseConfigModule.config ??',
+        '  baseConfigModule;',
+        '',
+        'export default withPWAAuto()(baseConfig);',
+        '',
+      ].join('\n'),
+    };
+  }
+
+  if (configFile.endsWith('.js')) {
+    return {
+      backupFileName,
+      wrapperContent: [
+        "const withPWAAuto = require('next-pwa-auto').default;",
+        `const baseConfigModule = require('./${backupFileName}');`,
+        '',
+        'const baseConfig =',
+        '  (baseConfigModule && baseConfigModule.default) ||',
+        '  baseConfigModule.nextConfig ||',
+        '  baseConfigModule.config ||',
+        '  baseConfigModule;',
+        '',
+        'module.exports = withPWAAuto()(baseConfig);',
+        '',
+      ].join('\n'),
+    };
   }
 
   return null;
@@ -508,17 +645,20 @@ function getBuildCommand(projectRoot: string): string {
 }
 
 function buildNextConfigTemplate(): string {
-  return "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n";
+  return "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n";
 }
 
 function injectPWAHead(
   projectRoot: string,
   routerType: 'app' | 'pages'
 ): 'injected' | 'already' | null {
-  if (routerType !== 'app') {
-    return null;
+  if (routerType === 'app') {
+    return injectPWAHeadInAppLayout(projectRoot);
   }
+  return injectPWAHeadInPagesLayout(projectRoot);
+}
 
+function injectPWAHeadInAppLayout(projectRoot: string): 'injected' | 'already' | null {
   const layoutPath = findTopLevelAppLayout(projectRoot);
   if (!layoutPath) {
     return null;
@@ -529,7 +669,7 @@ function injectPWAHead(
     return 'already';
   }
 
-  const importLine = `import { PWAHead } from 'next-pwa-auto/head';\n`;
+  const importLine = `import PWAHead from 'next-pwa-auto/head';\n`;
   let modified = importLine + content;
   const headMatch = modified.match(/<head(\s[^>]*)?>/i);
   if (headMatch && headMatch[0]) {
@@ -558,22 +698,69 @@ function injectPWAHead(
   return null;
 }
 
+function injectPWAHeadInPagesLayout(projectRoot: string): 'injected' | 'already' | null {
+  const appPath = findTopLevelPagesLayout(projectRoot);
+  if (!appPath) {
+    return null;
+  }
+
+  const content = fs.readFileSync(appPath, 'utf-8');
+  if (content.includes('PWAHead')) {
+    return 'already';
+  }
+
+  const importLine = `import PWAHead from 'next-pwa-auto/head';\n`;
+  let modified = importLine + content;
+
+  if (/return\s*\(\s*<>/m.test(modified)) {
+    modified = modified.replace(/return\s*\(\s*<>/m, 'return (\n    <>\n      <PWAHead />');
+    fs.writeFileSync(appPath, modified, 'utf-8');
+    return 'injected';
+  }
+
+  if (/return\s*\(\s*<Component[\s\S]*?\/>\s*\);/m.test(modified)) {
+    modified = modified.replace(
+      /return\s*\(\s*(<Component[\s\S]*?\/>)\s*\);/m,
+      'return (\n    <>\n      <PWAHead />\n      $1\n    </>\n  );'
+    );
+    fs.writeFileSync(appPath, modified, 'utf-8');
+    return 'injected';
+  }
+
+  if (/return\s*<Component[\s\S]*?\/>;/m.test(modified)) {
+    modified = modified.replace(
+      /return\s*(<Component[\s\S]*?\/>);/m,
+      'return (\n    <>\n      <PWAHead />\n      $1\n    </>\n  );'
+    );
+    fs.writeFileSync(appPath, modified, 'utf-8');
+    return 'injected';
+  }
+
+  if (modified.includes('<Component')) {
+    modified = modified.replace('<Component', '<PWAHead />\n      <Component');
+    fs.writeFileSync(appPath, modified, 'utf-8');
+    return 'injected';
+  }
+
+  return null;
+}
+
 function printManualSetupInstructions(configFile: string, routerType: 'app' | 'pages'): void {
   const isESM = configFile.endsWith('.mjs') || configFile.endsWith('.mts');
   console.log('');
   console.log(chalk.gray('  Manual instruction:'));
   if (isESM) {
-    console.log(chalk.gray("    import { withPWAAuto } from 'next-pwa-auto';"));
+    console.log(chalk.gray("    import withPWAAuto from 'next-pwa-auto';"));
     console.log(chalk.gray('    export default withPWAAuto()(nextConfig);'));
   } else {
-    console.log(chalk.gray("    const { withPWAAuto } = require('next-pwa-auto');"));
+    console.log(chalk.gray("    const withPWAAuto = require('next-pwa-auto').default;"));
     console.log(chalk.gray('    module.exports = withPWAAuto()(nextConfig);'));
   }
   if (routerType === 'app') {
-    console.log(chalk.gray("    import { PWAHead } from 'next-pwa-auto/head';"));
+    console.log(chalk.gray("    import PWAHead from 'next-pwa-auto/head';"));
     console.log(chalk.gray(`    Add <PWAHead /> inside <head> in ${APP_LAYOUT_PATH_HINT}`));
   } else {
-    console.log(chalk.gray("    import { PWAHead } from 'next-pwa-auto/head';"));
+    console.log(chalk.gray("    import PWAHead from 'next-pwa-auto/head';"));
     console.log(chalk.gray('    Add <PWAHead /> in pages/_app.tsx'));
   }
 }
@@ -584,7 +771,7 @@ function printPWAHeadManualInstructions(routerType: 'app' | 'pages'): void {
   } else {
     console.log(chalk.gray('    Add <PWAHead /> in pages/_app.tsx'));
   }
-  console.log(chalk.gray("    import { PWAHead } from 'next-pwa-auto/head';"));
+  console.log(chalk.gray("    import PWAHead from 'next-pwa-auto/head';"));
 }
 
 function printCancelledMessage(): void {

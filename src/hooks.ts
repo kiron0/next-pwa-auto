@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import * as React from 'react';
 
 export interface PWAUpdateState {
   updateAvailable: boolean;
@@ -8,11 +8,11 @@ export interface PWAUpdateState {
   registration: ServiceWorkerRegistration | null;
 }
 
-export function usePWAUpdate(): PWAUpdateState {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+function usePWAUpdate(): PWAUpdateState {
+  const [updateAvailable, setUpdateAvailable] = React.useState(false);
+  const [registration, setRegistration] = React.useState<ServiceWorkerRegistration | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       return;
     }
@@ -32,7 +32,7 @@ export function usePWAUpdate(): PWAUpdateState {
     };
   }, []);
 
-  const update = useCallback(() => {
+  const update = React.useCallback(() => {
     if (!registration?.waiting) return;
     registration.waiting.postMessage({ type: 'SKIP_WAITING' });
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -41,3 +41,5 @@ export function usePWAUpdate(): PWAUpdateState {
   }, [registration]);
   return { updateAvailable, update, registration };
 }
+
+export default usePWAUpdate;

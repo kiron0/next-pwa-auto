@@ -2,10 +2,10 @@
 
 # next-pwa-auto
 
-**Zero-config PWA plugin for Next.js 14+**
+**Near-zero setup PWA plugin for Next.js 14+**
 
 Turn any Next.js app into a Progressive Web App with one install and minimal setup.
-No config files. No manifest. No service worker scripts. No icon generation.
+No manual manifest. No service worker scripts. No icon generation boilerplate.
 
 [![npm version](https://img.shields.io/npm/v/next-pwa-auto.svg)](https://www.npmjs.com/package/next-pwa-auto)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -35,7 +35,7 @@ npm install next-pwa-auto
 
 ```js
 // next.config.js
-const { withPWAAuto } = require('next-pwa-auto');
+const withPWAAuto = require('next-pwa-auto').default;
 module.exports = withPWAAuto()({});
 ```
 
@@ -84,13 +84,13 @@ bun add next-pwa-auto
 
 ```js
 // next.config.js (CommonJS)
-const { withPWAAuto } = require('next-pwa-auto');
+const withPWAAuto = require('next-pwa-auto').default;
 module.exports = withPWAAuto()({});
 ```
 
 ```ts
 // next.config.mjs (ESM)
-import { withPWAAuto } from 'next-pwa-auto';
+import withPWAAuto from 'next-pwa-auto';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {};
@@ -102,7 +102,7 @@ export default withPWAAuto()(nextConfig);
 
 ```tsx
 // app/layout.tsx (App Router)
-import { PWAHead } from 'next-pwa-auto/head';
+import PWAHead from 'next-pwa-auto/head';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -118,7 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ```tsx
 // pages/_app.tsx (Pages Router)
-import { PWAHead } from 'next-pwa-auto/head';
+import PWAHead from 'next-pwa-auto/head';
 
 export default function App({ Component, pageProps }) {
   return (
@@ -167,9 +167,9 @@ When you run `next build`, next-pwa-auto automatically:
 The `<PWAHead />` component is your one-stop solution for PWA metadata injection:
 
 ```tsx
-import { PWAHead } from 'next-pwa-auto/head';
+import PWAHead from 'next-pwa-auto/head';
 
-// Zero config
+// Default setup
 <PWAHead />
 
 // With overrides
@@ -211,7 +211,7 @@ import { PWAHead } from 'next-pwa-auto/head';
 Handle "new version available" prompts with the `usePWAUpdate` hook:
 
 ```tsx
-import { usePWAUpdate } from 'next-pwa-auto/hooks';
+import usePWAUpdate from 'next-pwa-auto/hooks';
 
 function UpdateBanner() {
   const { updateAvailable, update } = usePWAUpdate();
@@ -251,10 +251,10 @@ window.__PWA_AUTO.version; // Plugin version
 
 ## Configuration
 
-All options are optional. Zero config works out of the box.
+All options are optional. Sensible defaults work out of the box.
 
 ```ts
-import { withPWAAuto } from 'next-pwa-auto';
+import withPWAAuto from 'next-pwa-auto';
 
 export default withPWAAuto({
   // Disable the plugin entirely
@@ -399,6 +399,7 @@ $ npx next-pwa-auto doctor
   ✅ Manifest: Will be auto-generated from package.json
   ✅ Generated icons: 10 icons in _pwa/icons/
   ✅ Offline page: Offline fallback page ready
+  
   ⚠️  HTTPS: Ensure HTTPS is configured for production (required for SW)
 ─────────────────────────────────────────────
   🎉 PWA setup looks good! (8 passed, 1 warnings)
@@ -406,7 +407,7 @@ $ npx next-pwa-auto doctor
 
 ### `npx next-pwa-auto init`
 
-Interactive setup wizard for new projects (zero-config default):
+Interactive setup wizard for new projects (near-zero setup):
 
 ```bash
 $ npx next-pwa-auto init
@@ -546,7 +547,7 @@ This means your PWA always has valid icons, even with zero setup.
 
 | Feature                      | next-pwa-auto | [next-pwa](https://github.com/shadowwalker/next-pwa) | [@ducanh2912/next-pwa](https://github.com/DuCanhGH/next-pwa) | [Serwist](https://serwist.pages.dev/) |
 | ---------------------------- | :-----------: | :--------------------------------------------------: | :----------------------------------------------------------: | :-----------------------------------: |
-| **Zero config**              |      ✅       |                          ❌                          |                              ❌                              |                  ❌                   |
+| **Near-zero setup**          |      ✅       |                          ❌                          |                              ❌                              |                  ❌                   |
 | **Auto manifest generation** |      ✅       |                          ❌                          |                              ❌                              |                  ❌                   |
 | **Auto icon generation**     |      ✅       |                          ❌                          |                              ❌                              |                  ❌                   |
 | **Placeholder icons**        |      ✅       |                          ❌                          |                              ❌                              |                  ❌                   |
@@ -568,7 +569,7 @@ This means your PWA always has valid icons, even with zero setup.
 - **`next-pwa`** — The original, but **unmaintained since 2022**. Doesn't support App Router. No auto-generation features.
 - **`@ducanh2912/next-pwa`** — Active fork of next-pwa. Good quality, but still requires manual manifest, icons, and offline page setup.
 - **`Serwist`** — Modern and well-maintained, but focused on service worker configuration. You still need to handle manifest, icons, and offline pages yourself.
-- **`next-pwa-auto`** — The only option that does **everything** automatically. Install it, add one component, and you have a complete PWA with manifest, icons, service worker, offline support, update UX, and security-safe caching — all zero-config.
+- **`next-pwa-auto`** — The only option that does **everything** automatically. Install it, add one component, and you have a complete PWA with manifest, icons, service worker, offline support, update UX, and security-safe caching — with near-zero setup.
 
 ---
 
@@ -605,7 +606,7 @@ NEXT_PWA=1 next dev
 Use the `usePWAUpdate` hook to show an update banner:
 
 ```tsx
-import { usePWAUpdate } from 'next-pwa-auto/hooks';
+import usePWAUpdate from 'next-pwa-auto/hooks';
 
 function App() {
   const { updateAvailable, update } = usePWAUpdate();

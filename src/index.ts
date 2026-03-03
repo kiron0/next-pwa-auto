@@ -281,4 +281,4 @@ generateIcons(config).then((result) => {
 }
 
 export type { PWAAutoConfig } from './types';
-export { withPWAAuto };
+export default withPWAAuto;

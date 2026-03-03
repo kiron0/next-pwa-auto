@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePWAUpdate } from '../src/hooks';
+import usePWAUpdate from '../src/hooks';
 describe('usePWAUpdate hook', () => {
   beforeEach(() => {
     Object.defineProperty(navigator, 'serviceWorker', {
@@ -94,3 +94,4 @@ describe('usePWAUpdate hook', () => {
     );
   });
 });
+

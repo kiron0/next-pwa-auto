@@ -56,7 +56,7 @@ describe('doctor command', () => {
 
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     writeFileSync(
@@ -91,13 +91,13 @@ describe('doctor command', () => {
 
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
     writeFileSync(
       path.join(projectRoot, 'app', 'layout.tsx'),
-      "import { PWAHead } from 'next-pwa-auto/head';\nexport default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html>; }"
+      "import PWAHead from 'next-pwa-auto/head';\nexport default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html>; }"
     );
 
     await runDoctor();
@@ -127,7 +127,7 @@ describe('doctor command', () => {
 
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
@@ -164,7 +164,7 @@ describe('doctor command', () => {
 
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     mkdirSync(path.join(projectRoot, 'pages'), { recursive: true });
@@ -201,7 +201,7 @@ describe('doctor command', () => {
 
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     await runDoctor();
@@ -232,7 +232,7 @@ describe('doctor command', () => {
     writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     mkdirSync(path.join(projectRoot, 'public', '_pwa', 'icons'), { recursive: true });
@@ -273,7 +273,7 @@ describe('doctor command', () => {
     writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     mkdirSync(path.join(projectRoot, '.next', 'static'), { recursive: true });
@@ -315,7 +315,7 @@ describe('doctor command', () => {
     writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     mkdirSync(path.join(projectRoot, 'public', '_pwa'), { recursive: true });
@@ -355,7 +355,7 @@ describe('doctor command', () => {
     writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
-      "import { withPWAAuto } from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
     );
 
     writeFileSync(path.join(projectRoot, 'public', 'manifest.webmanifest'), '{}');
@@ -388,4 +388,5 @@ describe('doctor command', () => {
     expect(out).toContain('No Next.js project detected');
   });
 });
+
 

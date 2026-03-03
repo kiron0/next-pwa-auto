@@ -9,7 +9,7 @@ export interface PWAHeadProps {
   enableSW?: boolean;
 }
 
-export function PWAHead({
+function PWAHead({
   manifest = '/manifest.webmanifest',
   themeColor = '#000000',
   swRegisterPath = '/_pwa/sw-register.js',
@@ -55,3 +55,5 @@ export function PWAHead({
     </>
   );
 }
+
+export default PWAHead;

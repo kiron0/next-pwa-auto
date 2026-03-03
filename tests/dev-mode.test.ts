@@ -52,7 +52,7 @@ describe('dev mode behavior', () => {
     it('calls getRegistrations in dev mode via PWAHead', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
-      const { PWAHead } = await import('../src/head');
+      const { default: PWAHead } = await import('../src/head');
       const { render, cleanup } = await import('@testing-library/react');
       const React = await import('react');
       render(React.createElement(PWAHead));
@@ -64,7 +64,7 @@ describe('dev mode behavior', () => {
     it('calls unregister on stale registrations in dev mode', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
-      const { PWAHead } = await import('../src/head');
+      const { default: PWAHead } = await import('../src/head');
       const { render, cleanup } = await import('@testing-library/react');
       const React = await import('react');
       render(React.createElement(PWAHead));
@@ -112,3 +112,4 @@ describe('dev mode behavior', () => {
     });
   });
 });
+

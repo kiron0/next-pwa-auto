@@ -1,7 +1,7 @@
 {
   "name": "next-pwa-auto",
   "version": "0.1.1",
-  "description": "Zero-config PWA plugin for Next.js 14+ — auto manifest, icons, service worker, and offline fallback",
+  "description": "Near-zero setup PWA plugin for Next.js 14+ - auto manifest, icons, service worker, and offline fallback",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -47,7 +47,7 @@
     "workbox",
     "manifest",
     "offline",
-    "zero-config"
+    "near-zero-setup"
   ],
   "author": "Toufiq Hasan Kiron",
   "license": "MIT",

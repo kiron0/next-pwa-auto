@@ -328,7 +328,7 @@ describe('interactive init', () => {
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
       [
-        "import { withPWAAuto } from 'next-pwa-auto';",
+        "import withPWAAuto from 'next-pwa-auto';",
         '',
         'const nextConfig = {};',
         '',
@@ -383,7 +383,7 @@ describe('interactive init', () => {
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
       [
-        "import { withPWAAuto } from 'next-pwa-auto';",
+        "import withPWAAuto from 'next-pwa-auto';",
         '',
         'const nextConfig = {};',
         '',
@@ -434,7 +434,7 @@ describe('interactive init', () => {
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
       [
-        "import { withPWAAuto } from 'next-pwa-auto';",
+        "import withPWAAuto from 'next-pwa-auto';",
         '',
         'const nextConfig = {};',
         '',
@@ -467,4 +467,5 @@ describe('interactive init', () => {
     expect(readCommandLog()).toEqual([]);
   });
 });
+
 

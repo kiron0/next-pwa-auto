@@ -1,7 +1,7 @@
 import { cleanup } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PWAHead } from '../src/head';
+import PWAHead from '../src/head';
 describe('PWAHead component', () => {
   afterEach(() => {
     cleanup();
@@ -85,3 +85,4 @@ describe('PWAHead component', () => {
     ).not.toThrow();
   });
 });
+

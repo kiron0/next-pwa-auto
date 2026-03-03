@@ -105,7 +105,7 @@ describe('init command', () => {
     const configPath = path.join(projectRoot, 'next.config.mjs');
     expect(existsSync(configPath)).toBe(true);
     const config = readFileSync(configPath, 'utf-8');
-    expect(config).toContain("import { withPWAAuto } from 'next-pwa-auto';");
+    expect(config).toContain("import withPWAAuto from 'next-pwa-auto';");
     expect(config).toContain('withPWAAuto()(nextConfig)');
   });
 
@@ -143,11 +143,11 @@ describe('init command', () => {
     expect(readCommandLog()).toEqual(['npm run build', 'npx next-pwa-auto doctor']);
 
     const config = readFileSync(path.join(projectRoot, 'next.config.js'), 'utf-8');
-    expect(config).toContain("const { withPWAAuto } = require('next-pwa-auto');");
+    expect(config).toContain("const withPWAAuto = require('next-pwa-auto').default;");
     expect(config).toContain('module.exports = withPWAAuto()(nextConfig);');
 
     const layout = readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8');
-    expect(layout).toContain("import { PWAHead } from 'next-pwa-auto/head';");
+    expect(layout).toContain("import PWAHead from 'next-pwa-auto/head';");
     expect(layout).toContain('<PWAHead />');
   });
 
@@ -243,6 +243,50 @@ describe('init command', () => {
     expect(layout.indexOf('<head>')).toBeLessThan(layout.indexOf('<body'));
   });
 
+  it('auto-injects <PWAHead /> into pages/_app when using Pages Router', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'pages-router-app',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.js'),
+      'const nextConfig = {}\nmodule.exports = nextConfig\n'
+    );
+
+    mkdirSync(path.join(projectRoot, 'pages'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'pages', '_app.tsx'),
+      [
+        'export default function App({ Component, pageProps }) {',
+        '  return <Component {...pageProps} />;',
+        '}',
+        '',
+      ].join('\n')
+    );
+
+    await runInit({ skip: true, force: true });
+
+    expect(readCommandLog()).toEqual(['npm run build', 'npx next-pwa-auto doctor']);
+
+    const pagesApp = readFileSync(path.join(projectRoot, 'pages', '_app.tsx'), 'utf-8');
+    expect(pagesApp).toContain("import PWAHead from 'next-pwa-auto/head';");
+    expect(pagesApp).toContain('<PWAHead />');
+    expect(pagesApp).toContain('<Component {...pageProps} />');
+  });
+
   it('prioritizes top-level app layout file when nested layouts exist', async () => {
     writeFileSync(
       path.join(projectRoot, 'package.json'),
@@ -286,14 +330,14 @@ describe('init command', () => {
       'utf-8'
     );
 
-    expect(topLayout).toContain("import { PWAHead } from 'next-pwa-auto/head';");
+    expect(topLayout).toContain("import PWAHead from 'next-pwa-auto/head';");
     expect(topLayout).toContain('<PWAHead />');
-    expect(nestedLayout).not.toContain("import { PWAHead } from 'next-pwa-auto/head';");
+    expect(nestedLayout).not.toContain("import PWAHead from 'next-pwa-auto/head';");
   });
 
   it('keeps existing config and layout untouched when already configured', async () => {
     const nextConfigContent = [
-      "import { withPWAAuto } from 'next-pwa-auto';",
+      "import withPWAAuto from 'next-pwa-auto';",
       '',
       'const nextConfig = {};',
       '',
@@ -301,7 +345,7 @@ describe('init command', () => {
       '',
     ].join('\n');
     const layoutContent = [
-      "import { PWAHead } from 'next-pwa-auto/head';",
+      "import PWAHead from 'next-pwa-auto/head';",
       '',
       'export default function RootLayout() {',
       '  return (',
@@ -366,7 +410,7 @@ describe('init command', () => {
     writeFileSync(
       path.join(projectRoot, 'next.config.mjs'),
       [
-        "import { withPWAAuto } from 'next-pwa-auto';",
+        "import withPWAAuto from 'next-pwa-auto';",
         '',
         'const nextConfig = {};',
         '',
@@ -413,7 +457,7 @@ describe('init command', () => {
       path.join(projectRoot, 'next.config.ts'),
       [
         "import type { NextConfig } from 'next';",
-        "import { withPWAAuto } from 'next-pwa-auto';",
+        "import withPWAAuto from 'next-pwa-auto';",
         '',
         'const nextConfig: NextConfig = {',
         '  reactStrictMode: true,',
@@ -438,4 +482,5 @@ describe('init command', () => {
     expect(config).toContain('export default withPWAAuto()(nextConfig);');
   });
 });
+
 
