@@ -94,7 +94,7 @@ describe('init command', () => {
 
     writeFileSync(path.join(projectRoot, 'bun.lockb'), 'mock');
 
-    await runInit(true);
+    await runInit({ skip: true, force: true });
 
     expect(readCommandLog()).toEqual([
       'bun add next-pwa-auto',
@@ -138,7 +138,7 @@ describe('init command', () => {
       'export default function RootLayout() { return <html><head></head><body></body></html> }'
     );
 
-    await runInit(true);
+    await runInit({ skip: true, force: true });
 
     expect(readCommandLog()).toEqual(['npm run build', 'npx next-pwa-auto doctor']);
 
@@ -198,7 +198,7 @@ describe('init command', () => {
       "export default function RootLayout({ children }) { return <html lang='en'><body>{children}</body></html> }"
     );
 
-    await runInit(true);
+    await runInit({ skip: true, force: true });
 
     const layout = readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8');
     expect(layout).toContain('<head>');
@@ -235,7 +235,7 @@ describe('init command', () => {
       'export default function RootLayout({ children }) { return <body>{children}</body> }'
     );
 
-    await runInit(true);
+    await runInit({ skip: true, force: true });
 
     const layout = readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8');
     expect(layout).toContain('<head>');
@@ -278,7 +278,7 @@ describe('init command', () => {
       'export default function RootLayout({ children }) { return <html><head></head><body>{children}</body></html> }'
     );
 
-    await runInit(true);
+    await runInit({ skip: true, force: true });
 
     const topLayout = readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8');
     const nestedLayout = readFileSync(
@@ -337,13 +337,57 @@ describe('init command', () => {
     mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
     writeFileSync(path.join(projectRoot, 'app', 'layout.tsx'), layoutContent);
 
-    await runInit(true);
+    await runInit({ skip: true, force: true });
 
     expect(readCommandLog()).toEqual(['npm run build', 'npx next-pwa-auto doctor']);
     expect(readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8')).toBe(
       nextConfigContent
     );
     expect(readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8')).toBe(layoutContent);
+  });
+
+  it('skips reconfiguration in skip mode when already configured without force', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'configured-skip-app',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      [
+        "import withPWAAuto from 'next-pwa-auto';",
+        '',
+        'const nextConfig = {};',
+        '',
+        'export default withPWAAuto()(nextConfig);',
+        '',
+      ].join('\n')
+    );
+    mkdirSync(path.join(projectRoot, 'public', '_pwa', 'icons'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'icons', 'icon-192x192.png'), 'old');
+    writeFileSync(path.join(projectRoot, 'public', 'sw.js'), 'const c = 1');
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'offline.html'), 'offline');
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout() { return <html><head><PWAHead /></head><body></body></html> }'
+    );
+
+    await runInit(true);
+
+    expect(readCommandLog()).toEqual([]);
   });
 
   it('removes import type NextConfig from config when already configured', async () => {
@@ -384,7 +428,7 @@ describe('init command', () => {
       'export default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html> }'
     );
 
-    await runInit(true);
+    await runInit({ skip: true, force: true });
 
     const config = readFileSync(path.join(projectRoot, 'next.config.ts'), 'utf-8');
     expect(config).not.toContain("import type { NextConfig } from 'next';");

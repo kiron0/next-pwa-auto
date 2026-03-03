@@ -118,7 +118,8 @@ describe('interactive init', () => {
     );
     expect(readCommandLog()).toEqual([]);
     const config = readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8');
-    expect(config).toContain(`withPWAAuto({"icon":"public/icon.png"})`);
+    expect(config).toContain('withPWAAuto()');
+    expect(config).not.toContain('withPWAAuto({"icon":"public/icon.png"})');
   });
 
   it('allows skipping icon selection to keep existing generated icons', async () => {
@@ -162,7 +163,7 @@ describe('interactive init', () => {
     expect(output).toContain('Detected existing generated icons at public/_pwa/icons.');
     expect(output).toContain('Using existing generated icons at public/_pwa/icons.');
     const config = readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8');
-    expect(config).toContain('withPWAAuto({"skipGeneratedIcons":true})');
+    expect(config).toContain('withPWAAuto()');
     expect(config).not.toContain('public/icon.png');
   });
 
@@ -207,7 +208,7 @@ describe('interactive init', () => {
     );
     expect(readCommandLog()).toEqual([]);
     const config = readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8');
-    expect(config).toContain('withPWAAuto({"skipGeneratedIcons":true})');
+    expect(config).toContain('withPWAAuto()');
   });
 
   it('does not offer keep-existing option when generated icons are absent', async () => {
@@ -255,8 +256,106 @@ describe('interactive init', () => {
     expect(selectOptions?.map((option) => option.value)).toContain('__placeholder__');
   });
 
-  it('updates next-config icon path when already configured and user selects a different icon', async () => {
+  it('warns when user declines automatic PWAHead injection', async () => {
+    const confirmSequence = [true, false, false, false];
+    let confirmIndex = 0;
+    vi.mocked(prompts.confirm).mockImplementation(() => {
+      const value = confirmSequence[confirmIndex] ?? false;
+      confirmIndex += 1;
+      return value as unknown as Promise<boolean>;
+    });
+    vi.mocked(prompts.isCancel).mockReturnValue(false);
+    vi.mocked(prompts.select).mockResolvedValue('__placeholder__');
+
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'interactive-no-pwahead',
+          version: '0.0.1',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head></head><body>{children}</body></html> }'
+    );
+
+    await runInit();
+
+    const output = logs.join('\n');
+    expect(output).toContain('Detected existing app\\layout.tsx; automatic <PWAHead /> insertion skipped.');
+    expect(output).toContain('Please add <PWAHead /> manually to enable PWA features.');
+    const layout = readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8');
+    expect(layout).not.toContain('<PWAHead />');
+  });
+
+  it('does not re-ask to insert PWAHead when already present', async () => {
     const confirmSequence = [true, true, false, false];
+    let confirmIndex = 0;
+    vi.mocked(prompts.confirm).mockImplementation(() => {
+      const value = confirmSequence[confirmIndex] ?? false;
+      confirmIndex += 1;
+      return value as unknown as Promise<boolean>;
+    });
+    vi.mocked(prompts.isCancel).mockReturnValue(false);
+    vi.mocked(prompts.select).mockResolvedValue('__placeholder__');
+
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'interactive-existing-pwahead',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      [
+        "import withPWAAuto from 'next-pwa-auto';",
+        '',
+        'const nextConfig = {};',
+        '',
+        'export default withPWAAuto()(nextConfig);',
+        '',
+      ].join('\n')
+    );
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html> }'
+    );
+
+    await runInit();
+
+    const output = logs.join('\n');
+    expect(output).toContain('Detected existing <PWAHead /> in app\\layout.tsx.');
+    expect(
+      vi.mocked(prompts.confirm).mock.calls.find((call) => call[0].message === 'Add <PWAHead /> to your root layout?')
+    ).toBeUndefined();
+    expect(output).toContain('next-pwa-auto already configured in next.config');
+  });
+
+  it('keeps existing config options and does not overwrite plugin options from selection', async () => {
+    const confirmSequence = [true, true, true, false, false];
     let confirmIndex = 0;
     vi.mocked(prompts.confirm).mockImplementation(() => {
       const value = confirmSequence[confirmIndex] ?? false;
@@ -303,7 +402,67 @@ describe('interactive init', () => {
     const output = readCommandLog();
     expect(output).toEqual([]);
     const config = readFileSync(path.join(projectRoot, 'next.config.mjs'), 'utf-8');
-    expect(config).toContain('withPWAAuto({"icon":"public/icon-new.png"})(nextConfig)');
-    expect(config).not.toContain('withPWAAuto({"icon":"public/icon-old.png"})(nextConfig)');
+    expect(config).toContain('withPWAAuto({"icon":"public/icon-old.png"})(nextConfig)');
+    expect(config).not.toContain('withPWAAuto({"icon":"public/icon-new.png"})(nextConfig)');
+  });
+
+  it('asks before re-running when project is already configured and allows user to cancel', async () => {
+    const confirmSequence = [true, false];
+    let confirmIndex = 0;
+    vi.mocked(prompts.confirm).mockImplementation(() => {
+      const value = confirmSequence[confirmIndex] ?? false;
+      confirmIndex += 1;
+      return value as unknown as Promise<boolean>;
+    });
+    vi.mocked(prompts.isCancel).mockReturnValue(false);
+
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'interactive-already-configured-cancel',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      [
+        "import withPWAAuto from 'next-pwa-auto';",
+        '',
+        'const nextConfig = {};',
+        '',
+        'export default withPWAAuto()(nextConfig);',
+        '',
+      ].join('\n')
+    );
+    mkdirSync(path.join(projectRoot, 'public', '_pwa', 'icons'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'icons', 'icon-192x192.png'), 'icon');
+    writeFileSync(path.join(projectRoot, 'public', 'sw.js'), 'const c = 1');
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'offline.html'), 'offline');
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html> }'
+    );
+
+    await runInit();
+
+    const output = logs.join('\n');
+    expect(vi.mocked(prompts.confirm)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(prompts.confirm)).toHaveBeenNthCalledWith(2, {
+      message: 'next-pwa-auto is already configured. Setup again?',
+      initialValue: false,
+    });
+    expect(output).toContain('  Thanks for using next-pwa-auto');
+    expect(readCommandLog()).toEqual([]);
   });
 });

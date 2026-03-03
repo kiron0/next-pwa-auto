@@ -80,10 +80,10 @@ describe('config', () => {
       fs.mkdirSync(path.join(tmpDir, 'src', 'pages'), { recursive: true });
       expect(detectRouterType(tmpDir)).toBe('pages');
     });
-    it('detects both when app and pages exist', () => {
+    it('prefers App router when app and pages both exist', () => {
       fs.mkdirSync(path.join(tmpDir, 'app'));
       fs.mkdirSync(path.join(tmpDir, 'pages'));
-      expect(detectRouterType(tmpDir)).toBe('both');
+      expect(detectRouterType(tmpDir)).toBe('app');
     });
     it('defaults to pages when neither exists', () => {
       expect(detectRouterType(tmpDir)).toBe('pages');
@@ -132,6 +132,21 @@ describe('config', () => {
     it('sets projectRoot to cwd', () => {
       const config = resolveConfig();
       expect(config.projectRoot).toBe(tmpDir);
+    });
+
+    it('uses NEXT_PWA_AUTO_ICON as runtime icon override', () => {
+      const previousValue = process.env.NEXT_PWA_AUTO_ICON;
+      process.env.NEXT_PWA_AUTO_ICON = 'public/icon.png';
+      try {
+        const config = resolveConfig();
+        expect(config.icon).toBe('public/icon.png');
+      } finally {
+        if (previousValue === undefined) {
+          delete process.env.NEXT_PWA_AUTO_ICON;
+        } else {
+          process.env.NEXT_PWA_AUTO_ICON = previousValue;
+        }
+      }
     });
   });
   describe('getPublicDir', () => {

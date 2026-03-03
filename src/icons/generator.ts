@@ -17,6 +17,7 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
   const publicDir = getPublicDir(config.projectRoot);
   const pwaDir = getPwaOutputDir(config);
   const iconsDir = path.join(pwaDir, 'icons');
+  const forceRegenerateIcons = process.env.NEXT_PWA_AUTO_FORCE_ICON_REGEN === '1';
   let sourceIcon: string | null = null;
   if (config.icon) {
     const iconPath = path.isAbsolute(config.icon)
@@ -26,7 +27,7 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
       sourceIcon = iconPath;
     }
   }
-  if (!sourceIcon) {
+  if (!sourceIcon && !forceRegenerateIcons) {
     sourceIcon = findSourceIcon(publicDir);
   }
   ensureDir(iconsDir);

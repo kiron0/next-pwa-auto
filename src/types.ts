@@ -25,7 +25,7 @@ export interface ResolvedConfig {
   swDest: string;
   scope: string;
   projectRoot: string;
-  routerType: 'app' | 'pages' | 'both';
+  routerType: 'app' | 'pages';
   packageInfo: PackageInfo;
 }
 

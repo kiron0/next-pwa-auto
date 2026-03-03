@@ -209,8 +209,164 @@ describe('doctor command', () => {
     const out = logs.join('\n');
     expect(out).toContain('Source icon');
     expect(out).toContain(
-      'No source icon found - add icon.png or icon.svg in public/ (or run build to generate placeholder icons)'
+      'No source icon found and generated icons were not found.'
     );
+  });
+
+  it('uses final build-time warnings when artifacts already exist', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-post-build-artifacts',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+    );
+
+    mkdirSync(path.join(projectRoot, 'public', '_pwa', 'icons'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'icons', 'icon-192x192.png'), 'icon');
+    writeFileSync(path.join(projectRoot, 'public', 'manifest.webmanifest'), '{}');
+    mkdirSync(path.join(projectRoot, 'public', '_pwa'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'offline.html'), 'offline');
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html> }'
+    );
+
+    await runDoctor();
+
+    const out = logs.join('\n');
+    expect(out).toContain(
+      'Service worker not found after build. Verify webpack mode and withPWAAuto integration.'
+    );
+  });
+
+  it('passes service worker check when worker exists in .next/static', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-webpack-sw',
+          version: '1.0.0',
+          dependencies: {
+            next: '16.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+    );
+
+    mkdirSync(path.join(projectRoot, '.next', 'static'), { recursive: true });
+    writeFileSync(path.join(projectRoot, '.next', 'static', 'sw.js'), 'const c = 1;');
+    mkdirSync(path.join(projectRoot, 'public', '_pwa', 'icons'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'icons', 'icon-192x192.png'), 'old');
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html> }'
+    );
+
+    await runDoctor();
+
+    const out = logs.join('\n');
+    expect(out).toContain('Found .next\\static\\sw.js.');
+    expect(out).not.toContain(
+      'Service worker not found after build. Verify webpack mode and withPWAAuto integration.'
+    );
+  });
+
+  it('passes service worker check when sw-register.js exists', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-sw-register-script',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+    );
+
+    mkdirSync(path.join(projectRoot, 'public', '_pwa'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'sw-register.js'), 'console.log("sw register");');
+
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head><PWAHead /></head><body>{children}</body></html> }'
+    );
+
+    await runDoctor();
+
+    const out = logs.join('\n');
+    expect(out).toMatch(/Found public[\\\/]_pwa[\\\/]sw-register\.js\./);
+    expect(out).not.toContain(
+      'Service worker not found after build. Verify webpack mode and withPWAAuto integration.'
+    );
+  });
+
+  it('uses post-build missing-source-icon message when no source icon exists', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-post-build-no-source-icon',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n"
+    );
+
+    writeFileSync(path.join(projectRoot, 'public', 'manifest.webmanifest'), '{}');
+    mkdirSync(path.join(projectRoot, 'public', '_pwa'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'offline.html'), 'offline');
+
+    await runDoctor();
+
+    const out = logs.join('\n');
+    expect(out).toContain('No source icon found and generated icons were not found.');
+    expect(out).not.toContain('No source icon found - add icon.png or icon.svg in public/');
   });
 
   it('flags missing Next.js project', async () => {

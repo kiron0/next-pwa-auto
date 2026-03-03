@@ -165,9 +165,13 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
   const existingIcons = fs.existsSync(iconsDir)
     ? fs.readdirSync(iconsDir).filter((f) => f.endsWith('.png'))
     : [];
-  const shouldPreserveIcons = config.skipGeneratedIcons && existingIcons.length > 0;
+  const forceRegenIcons = process.env.NEXT_PWA_AUTO_FORCE_ICON_REGEN === '1';
+  const shouldGenerateFromSource =
+    Boolean(config.icon) || Boolean(findSourceIcon(publicDir)) || forceRegenIcons;
+  const shouldPreserveIcons =
+    config.skipGeneratedIcons && existingIcons.length > 0 && !shouldGenerateFromSource;
   const shouldGenerateIcons =
-    !shouldPreserveIcons && (existingIcons.length === 0 || Boolean(config.icon) || Boolean(findSourceIcon(publicDir)));
+    existingIcons.length === 0 || shouldGenerateFromSource;
 
   if (fs.existsSync(iconsDir)) {
     icons = existingIcons.map((filename) => {

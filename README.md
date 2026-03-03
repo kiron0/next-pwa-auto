@@ -448,6 +448,12 @@ Run all steps in auto mode with:
 npx next-pwa-auto init --skip
 ```
 
+Re-run setup in auto mode even if `next-pwa-auto` is already present:
+
+```bash
+npx next-pwa-auto init --skip --force
+```
+
 ---
 
 ## Generated Files

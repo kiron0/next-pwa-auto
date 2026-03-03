@@ -7,12 +7,17 @@ import { resolveConfig } from '../src/config';
 import { generateIcons } from '../src/icons/generator';
 describe('placeholder icon generation', () => {
   let tmpDir: string;
+  let originalEnv: NodeJS.ProcessEnv | undefined;
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pwa-placeholder-'));
     fs.mkdirSync(path.join(tmpDir, 'public'), { recursive: true });
+    originalEnv = { ...process.env };
     vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
   });
   afterEach(() => {
+    if (originalEnv) {
+      process.env = { ...originalEnv };
+    }
     vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
@@ -114,6 +119,70 @@ describe('placeholder icon generation', () => {
     const result = await generateIcons(config);
     expect(result.sourceIcon).toContain('icon.png');
     expect(result.sourceIcon).not.toBe('placeholder');
+  });
+
+  it('uses a forced regeneration without explicit icon as placeholder', async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'package.json'),
+      JSON.stringify({ name: 'placeholder-forced', version: '1.0.0' })
+    );
+
+    const sourceBuffer = await sharp({
+      create: {
+        width: 512,
+        height: 512,
+        channels: 4,
+        background: { r: 0, g: 255, b: 0, alpha: 1 },
+      },
+    })
+      .png()
+      .toBuffer();
+    fs.writeFileSync(path.join(tmpDir, 'public', 'icon.png'), sourceBuffer);
+
+    process.env.NEXT_PWA_AUTO_FORCE_ICON_REGEN = '1';
+
+    const config = resolveConfig();
+    const result = await generateIcons(config);
+
+    expect(result.sourceIcon).toBe('placeholder');
+  });
+
+  it('uses explicit NEXT_PWA_AUTO_ICON over auto-detected source icons', async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'package.json'),
+      JSON.stringify({ name: 'explicit-icon-test', version: '1.0.0' })
+    );
+
+    const fallbackBuffer = await sharp({
+      create: {
+        width: 512,
+        height: 512,
+        channels: 4,
+        background: { r: 0, g: 255, b: 0, alpha: 1 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const explicitBuffer = await sharp({
+      create: {
+        width: 512,
+        height: 512,
+        channels: 4,
+        background: { r: 255, g: 0, b: 0, alpha: 1 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    fs.writeFileSync(path.join(tmpDir, 'public', 'icon.png'), fallbackBuffer);
+    fs.writeFileSync(path.join(tmpDir, 'public', 'custom.png'), explicitBuffer);
+
+    process.env.NEXT_PWA_AUTO_ICON = path.join('public', 'custom.png');
+
+    const config = resolveConfig();
+    const result = await generateIcons(config);
+
+    expect(result.sourceIcon).toContain('custom.png');
   });
   it('creates _pwa/icons directory when generating placeholders', async () => {
     fs.writeFileSync(

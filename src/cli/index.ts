@@ -41,8 +41,9 @@ program
   .command('init')
   .description('Set up next-pwa-auto in your Next.js project')
   .option('--skip', 'Run init with defaults (auto mode)')
-  .action(async (options: { skip?: boolean }) => {
-    await runInit(options.skip === true);
+  .option('--force', 'Force reconfigure when init would otherwise skip because already configured')
+  .action(async (options: { skip?: boolean; force?: boolean }) => {
+    await runInit({ skip: options.skip === true, force: options.force === true });
   });
 
 program.parse(process.argv);

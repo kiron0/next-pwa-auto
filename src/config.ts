@@ -30,11 +30,12 @@ export function resolveConfig(userConfig: PWAAutoConfig = {}): ResolvedConfig {
   const projectRoot = process.cwd();
   const packageInfo = readPackageJson(projectRoot);
   const routerType = detectRouterType(projectRoot);
+  const cliIcon = process.env.NEXT_PWA_AUTO_ICON?.trim();
 
   return {
     disable: userConfig.disable ?? DEFAULTS.disable,
     offline: userConfig.offline ?? DEFAULTS.offline,
-    icon: userConfig.icon ?? DEFAULTS.icon,
+    icon: cliIcon ? cliIcon : userConfig.icon ?? DEFAULTS.icon,
     skipGeneratedIcons: userConfig.skipGeneratedIcons ?? DEFAULTS.skipGeneratedIcons,
     manifest: { ...DEFAULTS.manifest, ...userConfig.manifest },
     workbox: { ...DEFAULTS.workbox, ...userConfig.workbox },
@@ -71,14 +72,13 @@ export function readPackageJson(projectRoot: string): PackageInfo {
   }
 }
 
-export function detectRouterType(projectRoot: string): 'app' | 'pages' | 'both' {
+export function detectRouterType(projectRoot: string): 'app' | 'pages' {
   const hasApp =
     fs.existsSync(path.join(projectRoot, 'app')) ||
     fs.existsSync(path.join(projectRoot, 'src', 'app'));
   const hasPages =
     fs.existsSync(path.join(projectRoot, 'pages')) ||
     fs.existsSync(path.join(projectRoot, 'src', 'pages'));
-  if (hasApp && hasPages) return 'both';
   if (hasApp) return 'app';
   return 'pages';
 }
