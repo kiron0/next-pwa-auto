@@ -40,7 +40,10 @@ program
   .description('Check PWA setup and diagnose issues')
   .option('--fix', 'Attempt safe automatic fixes for common setup issues')
   .action(async (options: { fix?: boolean }) => {
-    await runDoctor({ fix: options.fix === true });
+    const result = await runDoctor({ fix: options.fix === true });
+    if (result.failCount > 0) {
+      process.exitCode = 1;
+    }
   });
 program
   .command('init')

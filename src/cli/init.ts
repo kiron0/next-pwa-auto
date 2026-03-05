@@ -3,7 +3,13 @@ import chalk from 'chalk';
 import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { detectRouterType, getPublicDir, isNextProject, readPackageJson } from '../config';
+import {
+  detectRouterType,
+  getPublicDir,
+  isNextProject,
+  readJsonFile,
+  readPackageJson,
+} from '../config';
 import {
   canSkipIfConfigured,
   collectPWASetupChecks,
@@ -105,6 +111,8 @@ export async function runInit(options: InitOptions | boolean = false): Promise<I
       for (const command of summary.plannedCommands) {
         print(`  - RUN ${chalk.cyan(command)} ${chalk.gray('(command)')}`);
       }
+    } else if (summary.hasBlockingIssues) {
+      print(chalk.yellow('  No automatic changes planned due to blocking issues.'));
     } else {
       print(chalk.green('  No changes required.'));
     }
@@ -634,7 +642,7 @@ function getPackageManagerFromManifest(
   }
 
   try {
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const pkg = readJsonFile(packageJsonPath);
     const manager = typeof pkg.packageManager === 'string' ? pkg.packageManager : '';
     const lower = manager.toLowerCase();
     if (lower.startsWith('bun@')) return { label: 'bun', command: 'bun add next-pwa-auto' };
@@ -652,9 +660,23 @@ function isPackageInstalled(projectRoot: string): boolean {
   const pkgPath = path.join(projectRoot, 'package.json');
   if (!fs.existsSync(pkgPath)) return false;
   try {
-    const raw = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    const raw = readJsonFile(pkgPath);
     const deps = { ...raw.dependencies, ...raw.devDependencies };
-    return Boolean(deps && typeof deps[PACKAGE_NAME] === 'string');
+    if (!deps || typeof deps[PACKAGE_NAME] !== 'string') {
+      return false;
+    }
+
+    const localPackagePath = path.join(projectRoot, 'node_modules', PACKAGE_NAME, 'package.json');
+    if (fs.existsSync(localPackagePath)) {
+      return true;
+    }
+
+    try {
+      require.resolve(`${PACKAGE_NAME}/package.json`, { paths: [projectRoot] });
+      return true;
+    } catch {
+      return false;
+    }
   } catch {
     return false;
   }

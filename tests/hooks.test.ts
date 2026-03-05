@@ -1,15 +1,11 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import usePWAUpdate from '../src/hooks';
 describe('usePWAUpdate hook', () => {
   beforeEach(() => {
     Object.defineProperty(navigator, 'serviceWorker', {
       value: {
-        ready: Promise.resolve({
-          waiting: null,
-          installing: null,
-          active: { state: 'activated' },
-        }),
+        ready: new Promise(() => {}),
         addEventListener: vi.fn(),
         getRegistrations: vi.fn().mockResolvedValue([]),
       },
@@ -55,10 +51,9 @@ describe('usePWAUpdate hook', () => {
       writable: true,
     });
     const { result } = renderHook(() => usePWAUpdate());
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() => {
+      expect(result.current.registration).toBe(mockRegistration);
     });
-    expect(result.current.registration).toBe(mockRegistration);
   });
   it('calls postMessage with SKIP_WAITING when update() is called with waiting SW', async () => {
     const mockPostMessage = vi.fn();
@@ -76,8 +71,8 @@ describe('usePWAUpdate hook', () => {
       writable: true,
     });
     const { result } = renderHook(() => usePWAUpdate());
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() => {
+      expect(result.current.registration).toBe(mockRegistration);
     });
     act(() => {
       result.current.update();

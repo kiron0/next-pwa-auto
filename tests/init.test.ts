@@ -48,6 +48,16 @@ describe('init command', () => {
     });
   };
 
+  const createInstalledPackageMarker = (root: string): void => {
+    const pkgDir = path.join(root, 'node_modules', 'next-pwa-auto');
+    mkdirSync(pkgDir, { recursive: true });
+    writeFileSync(
+      path.join(pkgDir, 'package.json'),
+      JSON.stringify({ name: 'next-pwa-auto', version: '0.1.2' }),
+      'utf-8'
+    );
+  };
+
   const readCommandLog = (): string[] => {
     if (!existsSync(commandLog)) {
       return [];
@@ -62,6 +72,7 @@ describe('init command', () => {
   beforeEach(() => {
     projectRoot = createProject();
     createMockCommands(projectRoot);
+    createInstalledPackageMarker(projectRoot);
     originalPath = process.env.PATH ?? '';
     process.env.PATH = `${commandDir}${path.delimiter}${originalPath}`;
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(projectRoot);
@@ -576,6 +587,43 @@ describe('init command', () => {
     expect(config).not.toContain("import type { NextConfig } from 'next';");
     expect(config).not.toContain(': NextConfig');
     expect(config).toContain('export default withPWAAuto()(nextConfig);');
+  });
+
+  it('installs next-pwa-auto when declared in package.json but missing from node_modules', async () => {
+    rmSync(path.join(projectRoot, 'node_modules'), { recursive: true, force: true });
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'declared-but-missing',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.2',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      'const nextConfig = {};\nexport default nextConfig;\n'
+    );
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head></head><body>{children}</body></html> }'
+    );
+
+    await runInit({ skip: true, force: true });
+
+    expect(readCommandLog()).toEqual([
+      'npm install next-pwa-auto',
+      'npm run build',
+      'npx next-pwa-auto doctor',
+    ]);
   });
 });
 

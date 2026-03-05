@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const updateMock = vi.fn();
@@ -55,7 +55,9 @@ describe('PWAHead update UI', () => {
       value: Promise.resolve({ outcome: 'accepted' as const, platform: 'web' }),
     });
 
-    window.dispatchEvent(installEvent);
+    act(() => {
+      window.dispatchEvent(installEvent);
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Install' })).not.toBeNull();

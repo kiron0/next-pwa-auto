@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { getPublicDir, getPwaOutputDir, isNextProject, resolveConfig } from './config';
+import { getPublicDir, getPwaOutputDir, isNextProject, readJsonFile, resolveConfig } from './config';
 import { ensureDir, findSourceIcon } from './icons/utils';
 import { generateManifest, writeManifest } from './manifest';
 import { generateOfflinePage } from './offline';
@@ -131,7 +131,7 @@ function withPWAAuto(pwaConfig: PWAAutoConfig = {}) {
 function getProjectNextMajor(projectRoot: string): number | null {
   try {
     const packageJsonPath = path.join(projectRoot, 'package.json');
-    const raw = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const raw = readJsonFile(packageJsonPath);
     const nextVersion = raw?.dependencies?.next || raw?.devDependencies?.next;
     if (typeof nextVersion !== 'string') return null;
     const match = nextVersion.match(/\d+/);

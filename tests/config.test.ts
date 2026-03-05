@@ -7,6 +7,7 @@ import {
   formatAppName,
   getPublicDir,
   getPwaOutputDir,
+  isNextProject,
   readPackageJson,
   resolveConfig,
 } from '../src/config';
@@ -67,6 +68,44 @@ describe('config', () => {
       );
       const info = readPackageJson(tmpDir);
       expect(info.name).toBe(path.basename(tmpDir));
+    });
+
+    it('parses package.json even when file includes UTF-8 BOM', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        `\uFEFF${JSON.stringify({
+          name: 'bom-app',
+          description: 'BOM test',
+          version: '9.9.9',
+        })}`
+      );
+      const info = readPackageJson(tmpDir);
+      expect(info.name).toBe('bom-app');
+      expect(info.description).toBe('BOM test');
+      expect(info.version).toBe('9.9.9');
+    });
+  });
+  describe('isNextProject', () => {
+    it('returns true when next dependency exists', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({
+          name: 'next-app',
+          dependencies: { next: '14.0.0' },
+        })
+      );
+      expect(isNextProject(tmpDir)).toBe(true);
+    });
+
+    it('returns true when package.json has UTF-8 BOM and next dependency exists', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        `\uFEFF${JSON.stringify({
+          name: 'next-bom-app',
+          dependencies: { next: '14.0.0' },
+        })}`
+      );
+      expect(isNextProject(tmpDir)).toBe(true);
     });
   });
   describe('detectRouterType', () => {

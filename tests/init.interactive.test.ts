@@ -33,12 +33,27 @@ describe('interactive init', () => {
     commandDir = path.join(root, '.mock-bin');
     mkdirSync(commandDir, { recursive: true });
     commandLog = path.join(root, 'commands.log');
-    const commandPath = path.join(commandDir, 'npx.cmd');
-    writeFileSync(
-      commandPath,
-      ['@echo off', `echo npx %*>>"${commandLog.replace(/"/g, '""')}"`, 'exit /b 0'].join('\r\n'),
-      'utf-8'
-    );
+    const isWindows = process.platform === 'win32';
+    const writeCommand = (name: string, shouldLog = false): void => {
+      const commandPath = path.join(commandDir, isWindows ? `${name}.cmd` : name);
+      const script = isWindows
+        ? shouldLog
+          ? ['@echo off', `echo ${name} %*>>"${commandLog.replace(/"/g, '""')}"`, 'exit /b 0'].join('\r\n')
+          : ['@echo off', 'exit /b 0'].join('\r\n')
+        : shouldLog
+          ? ['#!/bin/sh', `printf '${name} %s\\n' "$*" >> "${commandLog}"`, 'exit 0'].join('\n')
+          : ['#!/bin/sh', 'exit 0'].join('\n');
+      writeFileSync(commandPath, script, 'utf-8');
+      if (!isWindows) {
+        fs.chmodSync(commandPath, 0o755);
+      }
+    };
+
+    writeCommand('npx', true);
+    writeCommand('npm');
+    writeCommand('bun');
+    writeCommand('pnpm');
+    writeCommand('yarn');
   };
 
   const readCommandLog = (): string[] => {

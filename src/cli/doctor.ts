@@ -1,12 +1,18 @@
 import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
-import { detectRouterType, isNextProject, readPackageJson } from '../config';
+import { detectRouterType, isNextProject, readJsonFile, readPackageJson } from '../config';
 import { collectPWASetupChecks, type AutoFix, type SetupCheck } from './setup-checks';
 import { injectPWAHead, updateNextConfig } from './init';
 
 interface DoctorOptions {
   fix?: boolean;
+}
+
+interface DoctorSummary {
+  failCount: number;
+  warnCount: number;
+  passCount: number;
 }
 
 type Severity = 'info' | 'warning' | 'error';
@@ -23,7 +29,7 @@ interface FixRunResult {
   actions: FixActionResult[];
 }
 
-export async function runDoctor(options: DoctorOptions = {}): Promise<void> {
+export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorSummary> {
   const projectRoot = process.cwd();
   const isFixMode = options.fix === true;
   const notes: string[] = ['HTTPS: Ensure HTTPS is configured for production (required for SW)'];
@@ -89,7 +95,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<void> {
       });
 
       try {
-        const rawPkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const rawPkg = readJsonFile(pkgPath);
         const allDeps = {
           ...rawPkg.dependencies,
           ...rawPkg.devDependencies,
@@ -241,6 +247,8 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<void> {
     );
   }
   console.log('');
+
+  return { failCount, warnCount, passCount };
 }
 
 function applyDoctorFixes(

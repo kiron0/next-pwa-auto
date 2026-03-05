@@ -169,8 +169,7 @@ export function readPackageJson(projectRoot: string): PackageInfo {
   };
 
   try {
-    const raw = fs.readFileSync(pkgPath, 'utf-8');
-    const pkg = JSON.parse(raw);
+    const pkg = readJsonFile(pkgPath);
 
     return {
       name: pkg.name || fallback.name,
@@ -203,12 +202,21 @@ export function detectRouterType(projectRoot: string): 'app' | 'pages' {
 export function isNextProject(projectRoot: string): boolean {
   const packagePath = path.join(projectRoot, 'package.json');
   try {
-    const raw = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
+    const raw = readJsonFile(packagePath);
     const deps = { ...raw.dependencies, ...raw.devDependencies };
     return typeof deps?.next === 'string';
   } catch {
     return false;
   }
+}
+
+export function readJsonFile(filePath: string): Record<string, any> {
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(stripUtf8Bom(raw));
+}
+
+function stripUtf8Bom(input: string): string {
+  return input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
 }
 
 export function getPublicDir(projectRoot: string): string {

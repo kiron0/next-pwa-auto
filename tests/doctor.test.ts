@@ -458,10 +458,34 @@ describe('doctor command', () => {
       )
     );
 
-    await runDoctor();
+    const summary = await runDoctor();
     const out = logs.join('\n');
     expect(out).toContain('Next.js project');
     expect(out).toContain('No Next.js project detected');
+    expect(summary.failCount).toBeGreaterThan(0);
+  });
+
+  it('does not flag Next.js project when package.json includes UTF-8 BOM', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      `\uFEFF${JSON.stringify(
+        {
+          name: 'doctor-bom-next',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )}`
+    );
+
+    const summary = await runDoctor();
+    const out = logs.join('\n');
+    expect(out).not.toContain('No Next.js project detected');
+    expect(summary.failCount).toBeGreaterThanOrEqual(0);
   });
 });
 
