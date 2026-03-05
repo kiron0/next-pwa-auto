@@ -23,7 +23,7 @@
     }
   },
   "bin": {
-    "npwa-auto": "dist/cli/index.js"
+    "next-pwa-auto": "dist/cli/index.js"
   },
   "files": [
     "dist/",
@@ -50,6 +50,11 @@
     "near-zero-setup"
   ],
   "author": "Toufiq Hasan Kiron",
+  "homepage": "https://npwa.js.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kiron0/next-pwa-auto.git"
+  },
   "license": "MIT",
   "peerDependencies": {
     "next": ">=14.0.0",
@@ -77,9 +82,5 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kiron0/next-pwa-auto.git"
   }
 }
