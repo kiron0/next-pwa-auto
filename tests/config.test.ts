@@ -41,12 +41,18 @@ describe('config', () => {
     it('reads name, description, version from package.json', () => {
       fs.writeFileSync(
         path.join(tmpDir, 'package.json'),
-        JSON.stringify({ name: 'test-app', description: 'A test', version: '1.2.3' })
+        JSON.stringify({
+          name: 'test-app',
+          description: 'A test',
+          version: '1.2.3',
+          keywords: ['pwa', 'nextjs', 123],
+        })
       );
       const info = readPackageJson(tmpDir);
       expect(info.name).toBe('test-app');
       expect(info.description).toBe('A test');
       expect(info.version).toBe('1.2.3');
+      expect(info.keywords).toEqual(['pwa', 'nextjs']);
     });
     it('falls back to folder name when package.json is missing', () => {
       const info = readPackageJson(tmpDir);
@@ -101,6 +107,9 @@ describe('config', () => {
       expect(config.disable).toBe(false);
       expect(config.offline).toBe(true);
       expect(config.icon).toBeNull();
+      expect(config.icons.maskable).toBe(true);
+      expect(config.icons.sizes).toEqual([72, 96, 128, 144, 152, 192, 384, 512]);
+      expect(config.icons.themeVariants).toEqual([]);
       expect(config.skipGeneratedIcons).toBe(false);
       expect(config.pwaDir).toBe('_pwa');
       expect(config.disableInDev).toBe(true);
@@ -113,6 +122,14 @@ describe('config', () => {
         offline: false,
         swDest: 'service-worker.js',
         skipGeneratedIcons: true,
+        icons: {
+          maskable: false,
+          sizes: [512, 256, 16, 512],
+          themeVariants: [
+            { name: 'dark', themeColor: '#000' },
+            { name: '', themeColor: '#fff' },
+          ],
+        },
         manifest: { name: 'Custom Name' },
       });
       expect(config.offline).toBe(false);
@@ -120,6 +137,9 @@ describe('config', () => {
       expect(config.manifest.name).toBe('Custom Name');
       expect(config.disableInDev).toBe(true);
       expect(config.skipGeneratedIcons).toBe(true);
+      expect(config.icons.maskable).toBe(false);
+      expect(config.icons.sizes).toEqual([256, 512]);
+      expect(config.icons.themeVariants).toEqual([{ name: 'dark', themeColor: '#000' }]);
     });
     it('merges cacheStrategies with defaults', () => {
       const config = resolveConfig({
@@ -147,6 +167,63 @@ describe('config', () => {
           process.env.NEXT_PWA_AUTO_ICON = previousValue;
         }
       }
+    });
+
+    it('applies cache preset and include/exclude overrides', () => {
+      const config = resolveConfig({
+        preset: 'api-first',
+        cacheStrategies: {
+          staticAssets: 'networkFirst',
+        },
+        include: ['/api/**'],
+        exclude: ['/api/auth/**'],
+      });
+
+      expect(config.preset).toBe('api-first');
+      expect(config.cacheStrategies.navigation).toBe('networkFirst');
+      expect(config.cacheStrategies.api).toBe('networkFirst');
+      expect(config.cacheStrategies.staticAssets).toBe('networkFirst');
+      expect(config.include).toEqual(['/api/**']);
+      expect(config.exclude).toEqual(['/api/auth/**']);
+    });
+    it('supports all named cache presets', () => {
+      const staticPreset = resolveConfig({ preset: 'static' });
+      expect(staticPreset.preset).toBe('static');
+      expect(staticPreset.cacheStrategies.navigation).toBe('networkFirst');
+      expect(staticPreset.cacheStrategies.staticAssets).toBe('cacheFirst');
+      expect(staticPreset.cacheStrategies.images).toBe('staleWhileRevalidate');
+      expect(staticPreset.cacheStrategies.api).toBe('networkOnly');
+
+      const apiFirstPreset = resolveConfig({ preset: 'api-first' });
+      expect(apiFirstPreset.preset).toBe('api-first');
+      expect(apiFirstPreset.cacheStrategies.api).toBe('networkFirst');
+      expect(apiFirstPreset.cacheStrategies.staticAssets).toBe('staleWhileRevalidate');
+      expect(apiFirstPreset.cacheStrategies.images).toBe('networkFirst');
+
+      const readonlyPreset = resolveConfig({ preset: 'readonly' });
+      expect(readonlyPreset.preset).toBe('readonly');
+      expect(readonlyPreset.cacheStrategies.navigation).toBe('cacheOnly');
+      expect(readonlyPreset.cacheStrategies.staticAssets).toBe('cacheOnly');
+      expect(readonlyPreset.cacheStrategies.images).toBe('cacheOnly');
+      expect(readonlyPreset.cacheStrategies.api).toBe('networkOnly');
+
+      const offlineFirstPreset = resolveConfig({ preset: 'offline-first' });
+      expect(offlineFirstPreset.preset).toBe('offline-first');
+      expect(offlineFirstPreset.cacheStrategies.navigation).toBe('networkFirst');
+      expect(offlineFirstPreset.cacheStrategies.staticAssets).toBe('cacheFirst');
+      expect(offlineFirstPreset.cacheStrategies.images).toBe('staleWhileRevalidate');
+      expect(offlineFirstPreset.cacheStrategies.api).toBe('networkOnly');
+    });
+
+    it('falls back to default preset with invalid preset input', () => {
+      const config = resolveConfig({
+        // @ts-expect-error testing fallback on invalid value
+        preset: 'not-a-preset',
+      });
+
+      expect(config.preset).toBe('default');
+      expect(config.cacheStrategies.navigation).toBe('networkFirst');
+      expect(config.cacheStrategies.staticAssets).toBe('cacheFirst');
     });
   });
   describe('getPublicDir', () => {

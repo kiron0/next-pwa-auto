@@ -127,6 +127,46 @@ describe('icons', () => {
         expect(icon.src).toMatch(/^\/_pwa\/icons\/icon-\d+x\d+(-maskable)?\.png$/);
       }
     });
+    it('supports disabling maskable icon generation', async () => {
+      await createTestIcon(path.join(tmpDir, 'public'));
+      const config = resolveConfig({
+        icons: {
+          maskable: false,
+        },
+      });
+      const result = await generateIcons(config);
+      const maskableIcons = result.icons.filter((i) => i.purpose === 'maskable');
+      expect(maskableIcons).toHaveLength(0);
+      expect(result.icons).toHaveLength(8);
+    });
+    it('supports custom icon size lists', async () => {
+      await createTestIcon(path.join(tmpDir, 'public'));
+      const config = resolveConfig({
+        icons: {
+          sizes: [96, 256, 512],
+        },
+      });
+      const result = await generateIcons(config);
+      const anySizes = result.icons.filter((i) => i.purpose === 'any').map((i) => i.sizes);
+      expect(anySizes).toEqual(['96x96', '256x256', '512x512']);
+      const maskableSizes = result.icons.filter((i) => i.purpose === 'maskable').map((i) => i.sizes);
+      expect(maskableSizes).toEqual(['512x512']);
+    });
+    it('generates optional placeholder theme variants when source icon is missing', async () => {
+      const config = resolveConfig({
+        icons: {
+          themeVariants: [
+            { name: 'light', themeColor: '#f1f5f9' },
+            { name: 'dark', themeColor: '#0f172a' },
+          ],
+        },
+      });
+      const result = await generateIcons(config);
+      const sources = result.icons.map((icon) => icon.src);
+      expect(sources.some((src) => src.includes('-light.png'))).toBe(true);
+      expect(sources.some((src) => src.includes('-dark.png'))).toBe(true);
+      expect(result.icons).toHaveLength(30);
+    });
     it('uses config.icon path when provided', async () => {
       const customDir = path.join(tmpDir, 'assets');
       fs.mkdirSync(customDir, { recursive: true });

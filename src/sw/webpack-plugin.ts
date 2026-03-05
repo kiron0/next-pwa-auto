@@ -1,4 +1,4 @@
-import { CacheStrategy, ResolvedConfig } from '../types';
+import { CacheStrategy, ResolvedConfig, RoutePattern } from '../types';
 
 const STRATEGY_MAP: Record<CacheStrategy, string> = {
   cacheFirst: 'CacheFirst',
@@ -27,9 +27,30 @@ const UNSAFE_URL_PATTERNS = [
   /\/_next\/image/i,
 ];
 
+const PROTECTED_ROUTE_PATTERNS: RoutePattern[] = [
+  /\/auth\//i,
+  /\/callback/i,
+  /\/token/i,
+  /\/log-?in/i,
+  /\/log-?out/i,
+  /\/sign-?in/i,
+  /\/sign-?out/i,
+  /\/sign-?up/i,
+  /\/oauth/i,
+  /\/sso/i,
+  /\/verify/i,
+  /\/reset-?password/i,
+  /\/forgot-?password/i,
+  /\/session/i,
+  /\/api\/auth/i,
+];
+
 export function buildWorkboxOptions(config: ResolvedConfig) {
-  const { cacheStrategies, workbox: workboxConfig, swDest, offline, pwaDir } = config;
+  const { cacheStrategies, workbox: workboxConfig, swDest, offline, pwaDir, include, exclude } = config;
   const runtimeCaching: any[] = [];
+  const includeMatchers = buildRouteMatchers(include);
+  const excludeMatchers = buildRouteMatchers(exclude);
+  const protectedMatchers = buildRouteMatchers(PROTECTED_ROUTE_PATTERNS);
 
   const navigationOptions: any = {
     cacheName: 'pages-cache',
@@ -51,13 +72,17 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
   }
 
   runtimeCaching.push({
-    urlPattern: ({ request }: any) => request.mode === 'navigate',
+    urlPattern: ({ request, url }: any) =>
+      isCacheableRoute(getUrlPath(url), includeMatchers, excludeMatchers, protectedMatchers, true) &&
+      request?.mode === 'navigate',
     handler: STRATEGY_MAP[cacheStrategies.navigation || 'networkFirst'],
     options: navigationOptions,
   });
 
   runtimeCaching.push({
-    urlPattern: /\/_next\/static\/.*/i,
+    urlPattern: ({ url }: any) =>
+      isCacheableRoute(getUrlPath(url), includeMatchers, excludeMatchers, protectedMatchers, false) &&
+      /\/_next\/static\/.*/i.test(getUrlPath(url)),
     handler: STRATEGY_MAP[cacheStrategies.staticAssets || 'cacheFirst'],
     options: {
       cacheName: 'static-assets-cache',
@@ -69,7 +94,9 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
   });
 
   runtimeCaching.push({
-    urlPattern: /\/_next\/data\/.*/i,
+    urlPattern: ({ url }: any) =>
+      isCacheableRoute(getUrlPath(url), includeMatchers, excludeMatchers, protectedMatchers, false) &&
+      /\/_next\/data\/.*/i.test(getUrlPath(url)),
     handler: 'NetworkFirst',
     options: {
       cacheName: 'next-data-cache',
@@ -81,7 +108,9 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
   });
 
   runtimeCaching.push({
-    urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp|avif)$/i,
+    urlPattern: ({ url }: any) =>
+      isCacheableRoute(getUrlPath(url), includeMatchers, excludeMatchers, protectedMatchers, false) &&
+      /\.(?:jpg|jpeg|gif|png|svg|ico|webp|avif)$/i.test(getUrlPath(url)),
     handler: STRATEGY_MAP[cacheStrategies.images || 'staleWhileRevalidate'],
     options: {
       cacheName: 'images-cache',
@@ -93,7 +122,9 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
   });
 
   runtimeCaching.push({
-    urlPattern: /\.(?:woff|woff2|ttf|otf|eot)$/i,
+    urlPattern: ({ url }: any) =>
+      isCacheableRoute(getUrlPath(url), includeMatchers, excludeMatchers, protectedMatchers, false) &&
+      /\.(?:woff|woff2|ttf|otf|eot)$/i.test(getUrlPath(url)),
     handler: 'CacheFirst',
     options: {
       cacheName: 'fonts-cache',
@@ -105,7 +136,9 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
   });
 
   runtimeCaching.push({
-    urlPattern: /\/api\/.*/i,
+    urlPattern: ({ url }: any) =>
+      isCacheableRoute(getUrlPath(url), includeMatchers, excludeMatchers, protectedMatchers, false) &&
+      /\/api\/.*/i.test(getUrlPath(url)),
     handler: STRATEGY_MAP[cacheStrategies.api || 'networkOnly'],
     options: {
       cacheName: 'api-cache',
@@ -156,6 +189,151 @@ export function buildWorkboxOptions(config: ResolvedConfig) {
     });
   }
   return options;
+}
+
+function isCacheableRoute(
+  pathname: string,
+  includeMatchers: Array<(value: string) => boolean>,
+  excludeMatchers: Array<(value: string) => boolean>,
+  protectedMatchers: Array<(value: string) => boolean>,
+  onlyForNavigation: boolean
+): boolean {
+  if (!pathname) return false;
+  if (protectedMatchers.some((matcher) => matcher(pathname))) {
+    return false;
+  }
+  if (onlyForNavigation && pathname === '/') {
+    return includeMatchers.length === 0;
+  }
+  if (excludeMatchers.some((matcher) => matcher(pathname))) {
+    return false;
+  }
+  if (includeMatchers.length === 0) {
+    return true;
+  }
+  return includeMatchers.some((matcher) => matcher(pathname));
+}
+
+function getUrlPath(urlValue: unknown): string {
+  if (!urlValue) return '';
+  if (typeof urlValue === 'string') {
+    return normalizeUrlPath(urlValue);
+  }
+
+  if (typeof urlValue === 'object' && urlValue !== null) {
+    const candidate = (urlValue as { pathname?: unknown; href?: unknown }).pathname;
+    if (typeof candidate === 'string') {
+      return normalizeUrlPath(candidate);
+    }
+    const href = (urlValue as { href?: unknown }).href;
+    if (typeof href === 'string') {
+      return normalizeUrlPath(href);
+    }
+  }
+
+  return '';
+}
+
+function normalizeUrlPath(url: string): string {
+  if (!url) {
+    return '';
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname || '/';
+  } catch {
+    return url.split('?')[0] || '/';
+  }
+}
+
+function buildRouteMatchers(patterns: RoutePattern[]): Array<(value: string) => boolean> {
+  return patterns.map(patternToMatcher);
+}
+
+function patternToMatcher(pattern: RoutePattern): (value: string) => boolean {
+  const matcher = toRouteRegExp(pattern);
+  return (value: string) => matcher.test(value);
+}
+
+function toRouteRegExp(pattern: RoutePattern): RegExp {
+  if (pattern instanceof RegExp) {
+    return pattern;
+  }
+
+  const regexLiteral = parseRegexLiteral(pattern);
+  if (regexLiteral) {
+    return regexLiteral;
+  }
+
+  if (isRegexPattern(pattern)) {
+    try {
+      return new RegExp(pattern);
+    } catch {
+      return globToRegExp(pattern);
+    }
+  }
+  return globToRegExp(pattern);
+}
+
+function isRegexPattern(pattern: string): boolean {
+  return pattern.startsWith('^') || pattern.endsWith('$');
+}
+
+function globToRegExp(pattern: string): RegExp {
+  const value = pattern.trim();
+  if (!value) {
+    return /^$/;
+  }
+
+  let source = '';
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i];
+    if (char === '*') {
+      if (value[i + 1] === '*') {
+        source += '.*';
+        i += 1;
+      } else {
+        source += '[^/]*';
+      }
+      continue;
+    }
+    if (char === '?') {
+      source += '[^/]';
+      continue;
+    }
+    source += escapeRegExpChar(char);
+  }
+  return new RegExp(`^${source}$`);
+}
+
+function parseRegexLiteral(pattern: string): RegExp | null {
+  if (!pattern.startsWith('/') || pattern.length < 2) {
+    return null;
+  }
+  const lastSlash = pattern.lastIndexOf('/');
+  if (lastSlash <= 0) {
+    return null;
+  }
+
+  const source = pattern.slice(1, lastSlash);
+  const flags = pattern.slice(lastSlash + 1);
+  if (!source) {
+    return null;
+  }
+
+  if (!/^[a-z]*$/i.test(flags)) {
+    return null;
+  }
+
+  try {
+    return new RegExp(source, flags);
+  } catch {
+    return null;
+  }
+}
+
+function escapeRegExpChar(char: string): string {
+  return /[\\^$.*+?()[\]{}|]/.test(char) ? `\\${char}` : char;
 }
 
 export function createSWWebpackPlugin(config: ResolvedConfig) {

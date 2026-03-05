@@ -8,16 +8,20 @@ import {
   findTopLevelAppLayout,
   findTopLevelPagesLayout,
   hasGeneratedPwaIcons,
-  hasPWAHeadInFile,
   type RouterType,
 } from './setup-discovery';
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
+export type CheckImpact = 'blocking' | 'warning' | 'optional';
+export type AutoFix = 'next-config' | 'pwa-head-app' | 'pwa-head-pages' | 'stale-assets';
 
 export interface SetupCheck {
   label: string;
   status: CheckStatus;
   message: string;
+  impact?: CheckImpact;
+  fixCommands?: string[];
+  autoFix?: AutoFix;
 }
 
 export const PWA_MANIFEST_FILES = ['manifest.webmanifest', 'manifest.json'];
@@ -78,6 +82,7 @@ export interface PWASetupCheckOptions {
   manifest?: ManifestCheckOptions;
   serviceWorker?: SimpleCheckLabelOptions;
   offline?: SimpleCheckLabelOptions;
+  generatedAssets?: SimpleCheckLabelOptions;
 }
 
 const ALLOWED_MINOR_WARNING_LABELS = new Set(['HTTPS', 'Icons']);
@@ -97,6 +102,7 @@ export function collectPWASetupChecks(
     checkPWAIcons(projectRoot, options.icon),
     checkManifest(projectRoot, options.manifest),
     checkServiceWorker(projectRoot, options.serviceWorker),
+    checkGeneratedAssets(projectRoot, options.generatedAssets),
     checkOfflinePage(projectRoot, options.offline),
   ];
 }
@@ -141,9 +147,7 @@ export function canSkipIfConfigured(
     return false;
   }
 
-  const blockingWarnings = checks.filter(
-    (check) => check.status === 'warn' && !isAllowedMinorWarning(check)
-  );
+  const blockingWarnings = checks.filter((check) => !isAllowedMinorWarning(check) && check.status === 'warn');
   if (blockingWarnings.length > 0) {
     return false;
   }
@@ -180,6 +184,9 @@ export function checkNextConfig(projectRoot: string): SetupCheck {
     return {
       label: 'Next config',
       status: 'fail',
+      impact: 'blocking',
+      fixCommands: ['npx next-pwa-auto init --skip --force'],
+      autoFix: 'next-config',
       message: 'No next.config.{js,mjs,ts,mts} found.',
     };
   }
@@ -189,9 +196,12 @@ export function checkNextConfig(projectRoot: string): SetupCheck {
   return {
     label: 'Next config',
     status: hasPlugin ? 'pass' : 'warn',
+    impact: hasPlugin ? 'optional' : 'blocking',
     message: hasPlugin
       ? `${configFile} uses next-pwa-auto`
       : `${configFile} found but doesn't use next-pwa-auto`,
+    fixCommands: hasPlugin ? [] : ['npx next-pwa-auto init --skip --force'],
+    autoFix: hasPlugin ? undefined : 'next-config',
   };
 }
 
@@ -201,11 +211,14 @@ function checkPWAHeadInAppLayout(projectRoot: string, options?: HeadCheckOptions
     return {
       label: 'PWAHead (app layout)',
       status: 'fail',
+      impact: 'blocking',
       message: `Could not find app layout at ${APP_LAYOUT_PATH_HINT}`,
+      fixCommands: ['npx next-pwa-auto init --skip --force'],
+      autoFix: 'pwa-head-app',
     };
   }
 
-  const hasPWAHead = hasPWAHeadInFile(layoutPath);
+  const hasPWAHead = fs.readFileSync(layoutPath, 'utf-8').includes('PWAHead');
   const relativePath = path.relative(projectRoot, layoutPath);
   const message = hasPWAHead
     ? `Found <PWAHead /> in ${relativePath}`
@@ -218,7 +231,10 @@ function checkPWAHeadInAppLayout(projectRoot: string, options?: HeadCheckOptions
   return {
     label: 'PWAHead (app layout)',
     status: hasPWAHead ? 'pass' : 'warn',
+    impact: hasPWAHead ? 'optional' : 'warning',
     message,
+    autoFix: hasPWAHead ? undefined : 'pwa-head-app',
+    fixCommands: hasPWAHead ? [] : ['npx next-pwa-auto doctor --fix'],
   };
 }
 
@@ -228,11 +244,15 @@ function checkPWAHeadInPagesLayout(projectRoot: string, options?: HeadCheckOptio
     return {
       label: 'PWAHead (pages layout)',
       status: 'fail',
+      impact: 'blocking',
       message: 'Could not find pages/_app',
+      fixCommands: ['npx next-pwa-auto init --skip --force'],
+      autoFix: 'pwa-head-pages',
     };
   }
 
-  const hasPWAHead = hasPWAHeadInFile(appPath);
+  const content = fs.readFileSync(appPath, 'utf-8');
+  const hasPWAHead = content.includes('PWAHead');
   const relativePath = path.relative(projectRoot, appPath);
   const message = hasPWAHead
     ? `Found <PWAHead /> in ${relativePath}`
@@ -243,7 +263,10 @@ function checkPWAHeadInPagesLayout(projectRoot: string, options?: HeadCheckOptio
   return {
     label: 'PWAHead (pages layout)',
     status: hasPWAHead ? 'pass' : 'warn',
+    impact: hasPWAHead ? 'optional' : 'warning',
     message,
+    autoFix: hasPWAHead ? undefined : 'pwa-head-pages',
+    fixCommands: hasPWAHead ? [] : ['npx next-pwa-auto doctor --fix'],
   };
 }
 
@@ -259,6 +282,7 @@ function checkPWAIcons(
     return {
       label: options.label || 'Icons',
       status,
+      impact: status === 'pass' ? 'optional' : 'warning',
       message:
         options.sourceIconMessage?.(sourceIcon, projectRoot) ??
         `Found source icon: ${path.relative(projectRoot, sourceIcon)}`,
@@ -275,6 +299,10 @@ function checkPWAIcons(
     status: generatedIconsExists
       ? (options.generatedIconsStatus ?? 'pass')
       : (options.missingIconStatus ?? 'warn'),
+    impact:
+      generatedIconsExists || statusIsPass(options.generatedIconsStatus)
+        ? 'optional'
+        : 'warning',
     message: generatedIconsExists
       ? (options.generatedIconsMessage ?? 'Generated PWA icons exist in public/_pwa/icons.')
       : missingIconMessage,
@@ -294,6 +322,7 @@ function checkManifest(
     return {
       label: 'Manifest',
       status: 'pass',
+      impact: 'optional',
       message:
         options.hasManifestMessage?.(manifestPath, projectRoot) ??
         `Found ${path.relative(projectRoot, manifestPath)}.`,
@@ -303,9 +332,11 @@ function checkManifest(
   return {
     label: 'Manifest',
     status: options.missingManifestStatus ?? 'warn',
+    impact: options.missingManifestStatus === 'fail' ? 'blocking' : 'warning',
     message:
       options.missingManifestMessage ??
       'No manifest found after build. Re-run next build with next-pwa-auto configured.',
+    fixCommands: ['npm run build'],
   };
 }
 
@@ -319,6 +350,7 @@ function checkServiceWorker(
     return {
       label: options.label || 'Service worker',
       status: 'pass',
+      impact: 'optional',
       message: `Found ${path.relative(projectRoot, swPath)}.`,
     };
   }
@@ -326,9 +358,70 @@ function checkServiceWorker(
   return {
     label: options.label || 'Service worker',
     status: 'warn',
+    impact: 'warning',
     message:
       options.missingMessage ??
       'Service worker not found after build. Verify webpack mode and withPWAAuto integration.',
+    autoFix: 'stale-assets',
+    fixCommands: ['npm run build'],
+  };
+}
+
+function checkGeneratedAssets(
+  projectRoot: string,
+  options: SimpleCheckLabelOptions = {}
+): SetupCheck {
+  const pwaDir = path.join(getPublicDir(projectRoot), '_pwa');
+  const hasIcons = fs.existsSync(path.join(pwaDir, 'icons'));
+  const hasOffline = fs.existsSync(path.join(pwaDir, 'offline.html'));
+  const hasSwRegister = SW_REGISTER_CANDIDATES.map((candidate) =>
+    path.join(projectRoot, candidate)
+  ).some((candidatePath) => fs.existsSync(candidatePath));
+  const hasAnyArtifact = hasIcons || hasOffline || hasSwRegister;
+
+  if (!hasAnyArtifact) {
+    return {
+      label: options.label || 'Generated assets',
+      status: 'pass',
+      impact: 'optional',
+      message:
+        options.missingMessage ??
+        'Generated PWA artifacts not found in public/_pwa. They will be created during build.',
+      fixCommands: ['npm run build'],
+    };
+  }
+
+  const missing: string[] = [];
+  if (!hasIcons) {
+    missing.push('icons');
+  }
+  if (!hasOffline) {
+    missing.push('offline.html');
+  }
+  if (!hasSwRegister) {
+    missing.push('sw-register.js');
+  }
+
+  if (missing.length === 0) {
+    return {
+      label: options.label || 'Generated assets',
+      status: 'pass',
+      impact: 'optional',
+      message:
+        options.missingMessage ??
+        'Generated assets in public/_pwa look complete.',
+    };
+  }
+
+  return {
+    label: options.label || 'Generated assets',
+    status: 'warn',
+    impact: 'warning',
+    message:
+      options.missingMessage ??
+      `Generated assets appear incomplete (${missing.join(', ')}). Run doctor --fix to refresh public/_pwa`,
+    autoFix: 'stale-assets',
+    fixCommands: ['npx next-pwa-auto doctor --fix', 'rm -rf public/_pwa'],
   };
 }
 
@@ -341,6 +434,7 @@ function checkOfflinePage(
     return {
       label: options.label || 'Offline page',
       status: 'pass',
+      impact: 'optional',
       message: 'Offline fallback page exists.',
     };
   }
@@ -348,8 +442,14 @@ function checkOfflinePage(
   return {
     label: options.label || 'Offline page',
     status: 'warn',
+    impact: 'warning',
     message:
       options.missingMessage ??
       'Offline fallback page not found after build. Re-run next build with next-pwa-auto configured.',
+    fixCommands: ['npm run build'],
   };
+}
+
+function statusIsPass(status?: CheckStatus): boolean {
+  return status === 'pass' || status === undefined;
 }

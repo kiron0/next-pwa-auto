@@ -3,16 +3,22 @@ import { ManifestIcon, ResolvedConfig, WebAppManifest } from '../types';
 
 export function generateManifest(config: ResolvedConfig, icons: ManifestIcon[]): WebAppManifest {
   const appName = formatAppName(config.packageInfo.name);
+  const categories = [...new Set((config.packageInfo.keywords || []).map((keyword) => keyword.toLowerCase()))];
+  const manifestId = `/${formatManifestPackageId(config.packageInfo.name) || 'app'}`;
 
   const baseManifest: WebAppManifest = {
     name: appName,
     short_name: appName.length > 12 ? appName.substring(0, 12) : appName,
-    description: config.packageInfo.description || `${appName} — Progressive Web App`,
+    description: config.packageInfo.description || `${appName} - Progressive Web App`,
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: '#000000',
     orientation: 'any',
+    id: manifestId,
+    categories,
+    screenshots: [],
+    shortcuts: [],
     icons,
     scope: config.scope,
   };
@@ -20,6 +26,15 @@ export function generateManifest(config: ResolvedConfig, icons: ManifestIcon[]):
   const merged = deepMerge(baseManifest, config.manifest) as WebAppManifest;
 
   return merged;
+}
+
+function formatManifestPackageId(packageName: string): string {
+  const trimmed = packageName.replace(/^@[^/]+\//, '').trim();
+  return trimmed
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {

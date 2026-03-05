@@ -39,10 +39,31 @@ type IconSelection = {
 
 interface InitOptions {
   skip?: boolean;
+  check?: boolean;
+  quiet?: boolean;
   force?: boolean;
 }
 
 type ConfigUpdateResult = 'already' | 'updated' | 'manual';
+type ConfigPlanResult = 'already' | 'updated' | 'manual';
+
+interface InitRunResult {
+  mode: 'apply' | 'check';
+  hasBlockingIssues: boolean;
+}
+
+interface PlannedFileChange {
+  action: 'create' | 'modify';
+  file: string;
+  reason: string;
+}
+
+interface InitCheckSummary {
+  hasBlockingIssues: boolean;
+  blockingIssues: string[];
+  plannedFileChanges: PlannedFileChange[];
+  plannedCommands: string[];
+}
 
 export class InitCancelledError extends Error {
   constructor(message = 'Setup was cancelled by user') {
@@ -54,10 +75,57 @@ export class InitCancelledError extends Error {
 const HEADER_ICON = '\u{1F680}';
 const COMPLETE_ICON = '\u{2705}';
 
-export async function runInit(options: InitOptions | boolean = false): Promise<void> {
+export async function runInit(options: InitOptions | boolean = false): Promise<InitRunResult> {
   const skip = typeof options === 'boolean' ? options : options.skip === true;
+  const check = typeof options === 'boolean' ? false : options.check === true;
+  const quiet = typeof options === 'boolean' ? false : options.quiet === true;
   const force = typeof options === 'boolean' ? false : options.force === true;
   const projectRoot = process.cwd();
+  const print = (...args: any[]) => {
+    if (!quiet) {
+      console.log(...args);
+    }
+  };
+
+  if (check) {
+    const summary = runInitCheck(projectRoot);
+    print('');
+    print(chalk.bold.blue(`${HEADER_ICON} next-pwa-auto init --check`));
+    print(chalk.gray('-'.repeat(45)));
+    print(chalk.gray('  Dry run mode: no files were changed.'));
+    print('');
+
+    if (summary.plannedFileChanges.length > 0 || summary.plannedCommands.length > 0) {
+      print(chalk.bold('  Planned changes:'));
+      for (const change of summary.plannedFileChanges) {
+        print(
+          `  - ${change.action.toUpperCase()} ${chalk.cyan(change.file)} ${chalk.gray(`(${change.reason})`)}`
+        );
+      }
+      for (const command of summary.plannedCommands) {
+        print(`  - RUN ${chalk.cyan(command)} ${chalk.gray('(command)')}`);
+      }
+    } else {
+      print(chalk.green('  No changes required.'));
+    }
+
+    if (summary.hasBlockingIssues) {
+      print('');
+      print(chalk.red.bold('  Blocking issues found:'));
+      for (const issue of summary.blockingIssues) {
+        print(`  - ${chalk.red(issue)}`);
+      }
+    } else {
+      print('');
+      print(chalk.green('  No blocking issues found.'));
+    }
+
+    print('');
+    return {
+      mode: 'check',
+      hasBlockingIssues: summary.hasBlockingIssues,
+    };
+  }
 
   if (!isNextProject(projectRoot)) {
     console.log(chalk.red('  ?'), chalk.red('Not a Next.js project'));
@@ -69,16 +137,16 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
   const publicDir = getPublicDir(projectRoot);
 
   try {
-    console.log('');
-    console.log(chalk.bold.blue(`${HEADER_ICON} next-pwa-auto init`));
-    console.log(chalk.gray('-'.repeat(45)));
-    console.log('');
-    console.log(chalk.bold('  Project:'), chalk.cyan(pkg.name));
-    console.log(
+    print('');
+    print(chalk.bold.blue(`${HEADER_ICON} next-pwa-auto init`));
+    print(chalk.gray('-'.repeat(45)));
+    print('');
+    print(chalk.bold('  Project:'), chalk.cyan(pkg.name));
+    print(
       chalk.bold('  Router: '),
       chalk.cyan(routerType === 'app' ? 'App Router' : 'Pages Router')
     );
-    console.log('');
+    print('');
     const setupChecks = collectPWASetupChecks(projectRoot, routerType);
     const canTreatAsConfigured = canSkipIfConfigured(setupChecks, routerType, projectRoot);
 
@@ -169,7 +237,7 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
     const hasPWAHead = Boolean(layoutPath && hasPWAHeadInFile(layoutPath));
 
     if (hasPWAHead) {
-      console.log(
+      print(
         chalk.yellow('  ?'),
         chalk.yellow(`Detected existing <PWAHead /> in ${layoutHint}.`)
       );
@@ -234,20 +302,188 @@ export async function runInit(options: InitOptions | boolean = false): Promise<v
       }
     }
 
-    console.log('');
-    console.log(chalk.gray('-'.repeat(45)));
-    console.log(chalk.green.bold(`  ${COMPLETE_ICON} Setup complete!`));
-    console.log('');
-    console.log(chalk.gray('  Deploy with HTTPS for full PWA support'));
-    console.log('');
+    print('');
+    print(chalk.gray('-'.repeat(45)));
+    print(chalk.green.bold(`  ${COMPLETE_ICON} Setup complete!`));
+    print('');
+    print(chalk.gray('  Deploy with HTTPS for full PWA support'));
+    print('');
+    return { mode: 'apply', hasBlockingIssues: false };
   } catch (error) {
     if (error instanceof InitCancelledError) {
       printCancelledMessage();
-      return;
+      return { mode: 'apply', hasBlockingIssues: false };
     }
 
     throw error;
   }
+}
+
+function runInitCheck(projectRoot: string): InitCheckSummary {
+  const plannedFileChanges: PlannedFileChange[] = [];
+  const plannedCommands: string[] = [];
+  const blockingIssues: string[] = [];
+
+  if (!isNextProject(projectRoot)) {
+    return {
+      hasBlockingIssues: true,
+      blockingIssues: ['Not a Next.js project (missing `next` dependency).'],
+      plannedFileChanges,
+      plannedCommands,
+    };
+  }
+
+  const routerType = detectRouterType(projectRoot);
+  const setupChecks = collectPWASetupChecks(projectRoot, routerType);
+  for (const check of setupChecks) {
+    if (check.status !== 'pass' && check.impact === 'blocking') {
+      blockingIssues.push(`${check.label}: ${check.message}`);
+    }
+  }
+
+  if (!isPackageInstalled(projectRoot)) {
+    plannedCommands.push(detectPackageManager(projectRoot).command);
+  }
+
+  const configPlan = getNextConfigPlan(projectRoot);
+  plannedFileChanges.push(...configPlan.fileChanges);
+  if (configPlan.result === 'manual') {
+    blockingIssues.push('Could not determine safe automatic next.config transformation.');
+  }
+
+  const headPlan = getPWAHeadPlan(projectRoot, routerType);
+  if (headPlan.missingLayout) {
+    blockingIssues.push(
+      routerType === 'app'
+        ? `Missing app layout at ${APP_LAYOUT_PATH_HINT}.`
+        : 'Missing pages/_app layout file.'
+    );
+  } else if (headPlan.layoutPath && !headPlan.hasPWAHead) {
+    plannedFileChanges.push({
+      action: 'modify',
+      file: path.relative(projectRoot, headPlan.layoutPath).replace(/\\/g, '/'),
+      reason: 'Inject <PWAHead /> into root layout',
+    });
+  }
+
+  return {
+    hasBlockingIssues: blockingIssues.length > 0,
+    blockingIssues,
+    plannedFileChanges: dedupePlannedFileChanges(plannedFileChanges),
+    plannedCommands,
+  };
+}
+
+function dedupePlannedFileChanges(changes: PlannedFileChange[]): PlannedFileChange[] {
+  const seen = new Set<string>();
+  const deduped: PlannedFileChange[] = [];
+
+  for (const change of changes) {
+    const key = `${change.action}:${change.file}:${change.reason}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(change);
+  }
+
+  return deduped;
+}
+
+function getPWAHeadPlan(
+  projectRoot: string,
+  routerType: 'app' | 'pages'
+): { layoutPath: string | null; hasPWAHead: boolean; missingLayout: boolean } {
+  const layoutPath =
+    routerType === 'app' ? findTopLevelAppLayout(projectRoot) : findTopLevelPagesLayout(projectRoot);
+  if (!layoutPath) {
+    return { layoutPath: null, hasPWAHead: false, missingLayout: true };
+  }
+  return {
+    layoutPath,
+    hasPWAHead: hasPWAHeadInFile(layoutPath),
+    missingLayout: false,
+  };
+}
+
+function getNextConfigPlan(projectRoot: string): { result: ConfigPlanResult; fileChanges: PlannedFileChange[] } {
+  const configFile = findNextConfigFile(projectRoot);
+  if (!configFile) {
+    return {
+      result: 'updated',
+      fileChanges: [
+        {
+          action: 'create',
+          file: 'next.config.mjs',
+          reason: 'Create next config with withPWAAuto wrapper',
+        },
+      ],
+    };
+  }
+
+  const configPath = path.join(projectRoot, configFile);
+  const rawContent = fs.readFileSync(configPath, 'utf-8');
+  const content = sanitizeNextConfigContent(rawContent);
+  const alreadyHasPlugin = content.includes('next-pwa-auto') || content.includes('withPWAAuto');
+  const normalizedFile = configFile.replace(/\\/g, '/');
+
+  if (alreadyHasPlugin) {
+    if (content !== rawContent) {
+      return {
+        result: 'updated',
+        fileChanges: [
+          {
+            action: 'modify',
+            file: normalizedFile,
+            reason: 'Normalize config typing for runtime compatibility',
+          },
+        ],
+      };
+    }
+    return { result: 'already', fileChanges: [] };
+  }
+
+  const injected = injectPluginIntoConfig(content, configFile);
+  if (injected) {
+    return {
+      result: 'updated',
+      fileChanges: [
+        {
+          action: 'modify',
+          file: normalizedFile,
+          reason: 'Inject withPWAAuto wrapper',
+        },
+      ],
+    };
+  }
+
+  const wrappedConfig = buildFallbackWrappedConfig(configFile, rawContent);
+  if (!wrappedConfig) {
+    return { result: 'manual', fileChanges: [] };
+  }
+
+  const parsed = path.parse(configFile);
+  const backupFile = `${parsed.name}.base${parsed.ext}`.replace(/\\/g, '/');
+  const backupPath = path.join(projectRoot, wrappedConfig.backupFileName);
+  const fileChanges: PlannedFileChange[] = [
+    {
+      action: 'modify',
+      file: normalizedFile,
+      reason: 'Wrap existing config with withPWAAuto using fallback adapter',
+    },
+  ];
+  if (!fs.existsSync(backupPath)) {
+    fileChanges.push({
+      action: 'create',
+      file: backupFile,
+      reason: 'Backup original next config',
+    });
+  }
+
+  return {
+    result: 'updated',
+    fileChanges,
+  };
 }
 
 function askConfirm(message: string, initialValue = true): Promise<boolean> {
@@ -424,7 +660,7 @@ function isPackageInstalled(projectRoot: string): boolean {
   }
 }
 
-function updateNextConfig(projectRoot: string): ConfigUpdateResult {
+export function updateNextConfig(projectRoot: string): ConfigUpdateResult {
   const configFile = findNextConfigFile(projectRoot);
   if (!configFile) {
     const content = buildNextConfigTemplate();
@@ -648,7 +884,7 @@ function buildNextConfigTemplate(): string {
   return "import withPWAAuto from 'next-pwa-auto';\n\nconst nextConfig = {};\n\nexport default withPWAAuto()(nextConfig);\n";
 }
 
-function injectPWAHead(
+export function injectPWAHead(
   projectRoot: string,
   routerType: 'app' | 'pages'
 ): 'injected' | 'already' | null {

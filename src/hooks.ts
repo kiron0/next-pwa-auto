@@ -23,9 +23,15 @@ function usePWAUpdate(): PWAUpdateState {
 
     window.addEventListener('pwa-update-available', handleUpdate);
 
-    navigator.serviceWorker.ready.then((reg) => {
-      setRegistration(reg);
-    });
+    const serviceWorker = navigator.serviceWorker as
+      | (ServiceWorkerContainer & { ready?: Promise<ServiceWorkerRegistration> })
+      | undefined;
+    const readyPromise = serviceWorker?.ready;
+    if (readyPromise && typeof readyPromise.then === 'function') {
+      readyPromise.then((reg) => {
+        setRegistration(reg);
+      });
+    }
 
     return () => {
       window.removeEventListener('pwa-update-available', handleUpdate);
@@ -35,9 +41,11 @@ function usePWAUpdate(): PWAUpdateState {
   const update = React.useCallback(() => {
     if (!registration?.waiting) return;
     registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
-    });
+    if ('serviceWorker' in navigator && typeof navigator.serviceWorker.addEventListener === 'function') {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    }
   }, [registration]);
   return { updateAvailable, update, registration };
 }

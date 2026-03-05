@@ -436,6 +436,102 @@ describe('init command', () => {
     expect(readCommandLog()).toEqual([]);
   });
 
+  it('supports --check dry-run mode without mutating files and reports blocking issues', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'init-check-app',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      'const nextConfig = {};\nexport default nextConfig;\n'
+    );
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    const layoutPath = path.join(projectRoot, 'app', 'layout.tsx');
+    const originalLayout = 'export default function RootLayout({ children }) { return <html><head></head><body>{children}</body></html> }';
+    writeFileSync(layoutPath, originalLayout);
+
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((...args) => {
+      logs.push(args.join(' '));
+    });
+    try {
+      const result = await runInit({ check: true });
+      expect(result.mode).toBe('check');
+      expect(result.hasBlockingIssues).toBe(true);
+    } finally {
+      logSpy.mockRestore();
+    }
+
+    const out = logs.join('\n');
+    expect(out).toContain('Dry run mode: no files were changed.');
+    expect(out).toContain('next.config.mjs');
+    expect(out).toContain('app/layout.tsx');
+    expect(readCommandLog()).toEqual([]);
+    expect(readFileSync(layoutPath, 'utf-8')).toBe(originalLayout);
+  });
+
+  it('supports --check --quiet mode and still returns blocking status', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'init-check-quiet-app',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      path.join(projectRoot, 'next.config.mjs'),
+      [
+        "import withPWAAuto from 'next-pwa-auto';",
+        '',
+        'const nextConfig = {};',
+        '',
+        'export default withPWAAuto()(nextConfig);',
+        '',
+      ].join('\n')
+    );
+    writeFileSync(path.join(projectRoot, 'public', 'manifest.webmanifest'), '{}');
+    writeFileSync(path.join(projectRoot, 'public', 'sw-register.js'), 'const register = () => {}');
+    mkdirSync(path.join(projectRoot, 'public', '_pwa', 'icons'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'icons', 'icon-192x192.png'), 'old');
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'offline.html'), 'offline');
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout() { return <html><head><PWAHead /></head><body></body></html> }'
+    );
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      const result = await runInit({ check: true, quiet: true });
+      expect(result.mode).toBe('check');
+      expect(result.hasBlockingIssues).toBe(false);
+    } finally {
+      logSpy.mockRestore();
+    }
+
+    expect(readCommandLog()).toEqual([]);
+  });
+
   it('removes import type NextConfig from config when already configured', async () => {
     writeFileSync(
       path.join(projectRoot, 'package.json'),

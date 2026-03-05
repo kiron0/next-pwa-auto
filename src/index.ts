@@ -173,7 +173,7 @@ function runPreBuildTasks(config: ReturnType<typeof resolveConfig>): void {
 
   if (fs.existsSync(iconsDir)) {
     icons = existingIcons.map((filename) => {
-      const match = filename.match(/icon-(\d+)x(\d+)(-maskable)?\.png/);
+      const match = filename.match(/^icon-(\d+)x(\d+)(-maskable)?(?:-([a-z0-9-]+))?\.png$/i);
       if (match) {
         return {
           src: `/${config.pwaDir}/icons/${filename}`,

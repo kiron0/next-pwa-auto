@@ -20,6 +20,14 @@ Turn any Next.js app into a Progressive Web App with minimal setup.
 npx next-pwa-auto init
 ```
 
+```bash
+# Dry run: show planned setup changes only
+npx next-pwa-auto init --check
+
+# Diagnose and auto-fix common setup issues
+npx next-pwa-auto doctor --fix
+```
+
 If you prefer manual setup:
 
 ```bash
@@ -38,7 +46,6 @@ module.exports = withPWAAuto()({});
 
 Detailed guides and all options are in docs:
 
-- Docs root: `docs/`
 - Get Started: https://npwa.js.org/get-started
 - Usage: https://npwa.js.org/usage
 - FAQ: https://npwa.js.org/faq

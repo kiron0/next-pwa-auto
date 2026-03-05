@@ -22,6 +22,24 @@ describe('manifest', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
   describe('generateManifest', () => {
+    it('adds installability metadata defaults', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({
+          name: '@scope/Progressive App',
+          description: 'App description',
+          keywords: ['PWA', 'Productivity', 'pwa'],
+        })
+      );
+      const config = resolveConfig();
+      const manifest = generateManifest(config, []);
+      expect(manifest.id).toBe('/progressive-app');
+      expect(manifest.categories).toEqual(['pwa', 'productivity']);
+      expect(manifest.shortcuts).toEqual([]);
+      expect(manifest.screenshots).toEqual([]);
+      expect(manifest.description).toBe('App description');
+    });
+
     it('generates manifest with correct defaults', () => {
       const config = resolveConfig();
       const icons: ManifestIcon[] = [];

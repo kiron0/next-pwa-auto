@@ -38,16 +38,27 @@ program.name('next-pwa-auto').description(cliDescription).version(cliVersion);
 program
   .command('doctor')
   .description('Check PWA setup and diagnose issues')
-  .action(async () => {
-    await runDoctor();
+  .option('--fix', 'Attempt safe automatic fixes for common setup issues')
+  .action(async (options: { fix?: boolean }) => {
+    await runDoctor({ fix: options.fix === true });
   });
 program
   .command('init')
   .description('Set up next-pwa-auto in your Next.js project')
   .option('--skip', 'Run init with defaults (auto mode)')
+  .option('--check', 'Dry run: print what init would change without mutating files')
+  .option('--quiet', 'Reduce output in check mode')
   .option('--force', 'Force reconfigure when init would otherwise skip because already configured')
-  .action(async (options: { skip?: boolean; force?: boolean }) => {
-    await runInit({ skip: options.skip === true, force: options.force === true });
+  .action(async (options: { skip?: boolean; check?: boolean; quiet?: boolean; force?: boolean }) => {
+    const result = await runInit({
+      skip: options.skip === true,
+      check: options.check === true,
+      quiet: options.quiet === true,
+      force: options.force === true,
+    });
+    if (result.hasBlockingIssues) {
+      process.exitCode = 1;
+    }
   });
 
 program.parse(process.argv);

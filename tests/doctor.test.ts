@@ -369,6 +369,82 @@ describe('doctor command', () => {
     expect(out).not.toContain('No source icon found - add icon.png or icon.svg in public/');
   });
 
+  it('applies fixes when run with --fix', async () => {
+    const nextConfigPath = path.join(projectRoot, 'next.config.mjs');
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-auto-fix',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(
+      nextConfigPath,
+      "const nextConfig = {};\nmodule.exports = nextConfig;"
+    );
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head></head><body>{children}</body></html>; }'
+    );
+    mkdirSync(path.join(projectRoot, 'public', '_pwa'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'offline.html'), 'offline');
+    writeFileSync(path.join(projectRoot, 'public', '_pwa', 'sw-register.js'), 'register');
+
+    await runDoctor({ fix: true });
+
+    const configContent = readFileSync(nextConfigPath, 'utf-8');
+    const layoutContent = readFileSync(path.join(projectRoot, 'app', 'layout.tsx'), 'utf-8');
+    const out = logs.join('\n');
+    expect(configContent).toContain("from 'next-pwa-auto'");
+    expect(configContent).toContain('withPWAAuto');
+    expect(layoutContent).toContain('PWAHead');
+    expect(out).toContain('Updated next.config');
+    expect(out).toContain('Added <PWAHead /> to layout.');
+    expect(out).toContain('AUTO_FIX|action=next-config|result=applied');
+    expect(out).toContain('AUTO_FIX_SUMMARY|');
+  });
+
+  it('prints stable severity and fix command lines for CI parsing', async () => {
+    writeFileSync(
+      path.join(projectRoot, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'doctor-ci-lines',
+          version: '1.0.0',
+          dependencies: {
+            next: '14.0.0',
+            'next-pwa-auto': '^0.1.1',
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(path.join(projectRoot, 'package-lock.json'), '{}');
+    writeFileSync(path.join(projectRoot, 'next.config.mjs'), 'const nextConfig = {};\nexport default nextConfig;\n');
+    mkdirSync(path.join(projectRoot, 'app'), { recursive: true });
+    writeFileSync(
+      path.join(projectRoot, 'app', 'layout.tsx'),
+      'export default function RootLayout({ children }) { return <html><head></head><body>{children}</body></html>; }'
+    );
+
+    await runDoctor();
+
+    const out = logs.join('\n');
+    expect(out).toContain('CHECK|label=Next config|status=warn|severity=warning|impact=blocking|');
+    expect(out).toContain('FIX|label=Next config|command=npx next-pwa-auto init --skip --force');
+  });
+
   it('flags missing Next.js project', async () => {
     writeFileSync(
       path.join(projectRoot, 'package.json'),

@@ -67,6 +67,98 @@ describe('service worker', () => {
       expect(findByCache('pages-cache').handler).toBe('CacheFirst');
       expect(findByCache('images-cache').handler).toBe('NetworkOnly');
     });
+    it('supports include route patterns', () => {
+      const config = resolveConfig({
+        include: ['/public/*'],
+      });
+      const options = buildWorkboxOptions(config);
+      const navigationRule = options.runtimeCaching.find((r: any) => r.options.cacheName === 'pages-cache');
+      expect(
+        navigationRule.urlPattern({
+          request: { mode: 'navigate' },
+          url: 'https://example.com/public/home',
+        })
+      ).toBe(true);
+      expect(
+        navigationRule.urlPattern({
+          request: { mode: 'navigate' },
+          url: 'https://example.com/private/home',
+        })
+      ).toBe(false);
+    });
+    it('respects exclude route patterns over include', () => {
+      const config = resolveConfig({
+        include: ['/api/*'],
+        exclude: ['/api/auth/*'],
+      });
+      const options = buildWorkboxOptions(config);
+      const apiRule = options.runtimeCaching.find((r: any) => r.options.cacheName === 'api-cache');
+      expect(
+        apiRule.urlPattern({
+          request: { mode: 'same-origin' },
+          url: 'https://example.com/api/posts',
+        })
+      ).toBe(true);
+      expect(
+        apiRule.urlPattern({
+          request: { mode: 'same-origin' },
+          url: 'https://example.com/api/auth/session',
+        })
+      ).toBe(false);
+    });
+    it('supports double-star glob route patterns', () => {
+      const config = resolveConfig({
+        include: ['/docs/**'],
+      });
+      const options = buildWorkboxOptions(config);
+      const navigationRule = options.runtimeCaching.find((r: any) => r.options.cacheName === 'pages-cache');
+      expect(
+        navigationRule.urlPattern({
+          request: { mode: 'navigate' },
+          url: 'https://example.com/docs/guides/install/windows',
+        })
+      ).toBe(true);
+    });
+    it('supports regex-string route patterns', () => {
+      const config = resolveConfig({
+        include: ['^/products/[0-9]+$'],
+      });
+      const options = buildWorkboxOptions(config);
+      const navigationRule = options.runtimeCaching.find((r: any) => r.options.cacheName === 'pages-cache');
+      expect(
+        navigationRule.urlPattern({
+          request: { mode: 'navigate' },
+          url: 'https://example.com/products/42',
+        })
+      ).toBe(true);
+      expect(
+        navigationRule.urlPattern({
+          request: { mode: 'navigate' },
+          url: 'https://example.com/products/42/details',
+        })
+      ).toBe(false);
+    });
+    it('always protects auth and session routes from runtime caching', () => {
+      const config = resolveConfig({
+        include: ['/**'],
+      });
+      const options = buildWorkboxOptions(config);
+      const navigationRule = options.runtimeCaching.find((r: any) => r.options.cacheName === 'pages-cache');
+      const apiRule = options.runtimeCaching.find((r: any) => r.options.cacheName === 'api-cache');
+
+      expect(
+        navigationRule.urlPattern({
+          request: { mode: 'navigate' },
+          url: 'https://example.com/auth/login',
+        })
+      ).toBe(false);
+      expect(
+        apiRule.urlPattern({
+          request: { mode: 'same-origin' },
+          url: 'https://example.com/api/auth/session',
+        })
+      ).toBe(false);
+    });
     it('includes exclude patterns', () => {
       const config = resolveConfig();
       const options = buildWorkboxOptions(config);

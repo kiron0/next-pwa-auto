@@ -4,8 +4,6 @@ import { formatAppName, getPublicDir, getPwaOutputDir } from '../config';
 import { ManifestIcon, ResolvedConfig } from '../types';
 import { ensureDir, findSourceIcon } from './utils';
 
-const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
-const MASKABLE_SIZES = [192, 512];
 const MASKABLE_PADDING_RATIO = 0.1;
 
 export interface IconGenerationResult {
@@ -17,7 +15,10 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
   const publicDir = getPublicDir(config.projectRoot);
   const pwaDir = getPwaOutputDir(config);
   const iconsDir = path.join(pwaDir, 'icons');
+  const iconSizes = config.icons.sizes;
+  const maskableSizes = getMaskableSizes(iconSizes, config.icons.maskable);
   const forceRegenerateIcons = process.env.NEXT_PWA_AUTO_FORCE_ICON_REGEN === '1';
+
   let sourceIcon: string | null = null;
   if (config.icon) {
     const iconPath = path.isAbsolute(config.icon)
@@ -27,42 +28,52 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
       sourceIcon = iconPath;
     }
   }
+
   if (!sourceIcon && !forceRegenerateIcons) {
     sourceIcon = findSourceIcon(publicDir);
   }
+
   ensureDir(iconsDir);
+
+  const appName = formatAppName(config.packageInfo.name);
+  const themeColor = (config.manifest as { theme_color?: string })?.theme_color || '#1a1a2e';
+  const variantBuffers: Array<{ suffix: string; buffer: Buffer }> = [];
+
   let sourceBuffer: Buffer;
   let sourceName: string;
   if (sourceIcon) {
     sourceBuffer = await sharp(sourceIcon).png().toBuffer();
     sourceName = path.basename(sourceIcon);
   } else {
-    const appName = formatAppName(config.packageInfo.name);
-    const themeColor = (config.manifest as any)?.theme_color || '#1a1a2e';
     sourceBuffer = await generatePlaceholderIcon(appName, themeColor, 512);
     sourceName = 'placeholder (auto-generated)';
     console.log(
-      `[next-pwa-auto] ${String.fromCodePoint(0x2139, 0xfe0f)}  No source icon found — generating placeholder with initials "${getInitials(appName)}"`
+      `[next-pwa-auto] ${String.fromCodePoint(0x2139, 0xfe0f)}  No source icon found - generating placeholder with initials "${getInitials(appName)}"`
     );
+
+    for (const variant of config.icons.themeVariants) {
+      const slug = toSlug(variant.name);
+      if (!slug) {
+        continue;
+      }
+      const variantBuffer = await generatePlaceholderIcon(appName, variant.themeColor, 512);
+      variantBuffers.push({ suffix: `-${slug}`, buffer: variantBuffer });
+    }
   }
+
   const icons: ManifestIcon[] = [];
-  for (const size of ICON_SIZES) {
-    const filename = `icon-${size}x${size}.png`;
-    const outputPath = path.join(iconsDir, filename);
-    const relativePath = `/${config.pwaDir}/icons/${filename}`;
-    await sharp(sourceBuffer)
-      .resize(size, size, {
-        fit: 'contain',
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .png({ quality: 90, compressionLevel: 9 })
-      .toFile(outputPath);
-    icons.push({
-      src: relativePath,
-      sizes: `${size}x${size}`,
-      type: 'image/png',
-      purpose: 'any',
-    });
+  await generateIconSet(icons, sourceBuffer, '', iconSizes, maskableSizes, iconsDir, config.pwaDir);
+
+  for (const variant of variantBuffers) {
+    await generateIconSet(
+      icons,
+      variant.buffer,
+      variant.suffix,
+      iconSizes,
+      maskableSizes,
+      iconsDir,
+      config.pwaDir
+    );
   }
 
   const existingFavicon = getExistingFaviconPath(config.projectRoot);
@@ -75,10 +86,46 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
     );
   }
 
-  for (const size of MASKABLE_SIZES) {
-    const filename = `icon-${size}x${size}-maskable.png`;
+  console.log(
+    `[next-pwa-auto] ${String.fromCodePoint(0x2705)} Generated ${icons.length} icons from ${sourceName}`
+  );
+  return { icons, sourceIcon: sourceIcon || 'placeholder' };
+}
+
+async function generateIconSet(
+  icons: ManifestIcon[],
+  sourceBuffer: Buffer,
+  filenameSuffix: string,
+  iconSizes: number[],
+  maskableSizes: number[],
+  iconsDir: string,
+  pwaDir: string
+): Promise<void> {
+  for (const size of iconSizes) {
+    const filename = `icon-${size}x${size}${filenameSuffix}.png`;
     const outputPath = path.join(iconsDir, filename);
-    const relativePath = `/${config.pwaDir}/icons/${filename}`;
+    const relativePath = `/${pwaDir}/icons/${filename}`;
+
+    await sharp(sourceBuffer)
+      .resize(size, size, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png({ quality: 90, compressionLevel: 9 })
+      .toFile(outputPath);
+
+    icons.push({
+      src: relativePath,
+      sizes: `${size}x${size}`,
+      type: 'image/png',
+      purpose: 'any',
+    });
+  }
+
+  for (const size of maskableSizes) {
+    const filename = `icon-${size}x${size}-maskable${filenameSuffix}.png`;
+    const outputPath = path.join(iconsDir, filename);
+    const relativePath = `/${pwaDir}/icons/${filename}`;
     const padding = Math.round(size * MASKABLE_PADDING_RATIO);
     const innerSize = size - padding * 2;
     const innerImage = await sharp(sourceBuffer)
@@ -88,6 +135,7 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
       })
       .png()
       .toBuffer();
+
     await sharp({
       create: {
         width: size,
@@ -99,6 +147,7 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
       .composite([{ input: innerImage, gravity: 'centre' }])
       .png({ quality: 90, compressionLevel: 9 })
       .toFile(outputPath);
+
     icons.push({
       src: relativePath,
       sizes: `${size}x${size}`,
@@ -106,10 +155,32 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
       purpose: 'maskable',
     });
   }
-  console.log(
-    `[next-pwa-auto] ${String.fromCodePoint(0x2705)} Generated ${icons.length} icons from ${sourceName}`
-  );
-  return { icons, sourceIcon: sourceIcon || 'placeholder' };
+}
+
+function getMaskableSizes(iconSizes: number[], enableMaskable: boolean): number[] {
+  if (!enableMaskable) {
+    return [];
+  }
+
+  const preferredMaskableSizes = [192, 512].filter((size) => iconSizes.includes(size));
+  if (preferredMaskableSizes.length > 0) {
+    return preferredMaskableSizes;
+  }
+
+  if (iconSizes.length === 0) {
+    return [];
+  }
+
+  return [Math.max(...iconSizes)];
+}
+
+function toSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 async function generateFavicon(sourceBuffer: Buffer, outputPath: string): Promise<void> {
@@ -137,11 +208,13 @@ function getExistingFaviconPath(projectRoot: string): string | null {
     path.join(projectRoot, 'app', 'favicon.ico'),
     path.join(projectRoot, 'src', 'app', 'favicon.ico'),
   ];
+
   for (const candidate of candidates) {
     if (require('fs').existsSync(candidate)) {
       return candidate;
     }
   }
+
   return null;
 }
 
@@ -177,5 +250,6 @@ async function generatePlaceholderIcon(
       >${initials}</text>
     </svg>
   `.trim();
+
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
