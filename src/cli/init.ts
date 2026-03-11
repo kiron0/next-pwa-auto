@@ -623,14 +623,14 @@ function detectPackageManager(projectRoot: string): { label: string; command: st
   }
 
   const entries = fs.readdirSync(projectRoot);
-  if (entries.includes('bun.lock')) return { label: 'bun', command: 'bun add next-pwa-auto' };
-  if (entries.includes('bun.lockb')) return { label: 'bun', command: 'bun add next-pwa-auto' };
+  if (entries.includes('bun.lock')) return { label: 'bun', command: 'bun add -d next-pwa-auto' };
+  if (entries.includes('bun.lockb')) return { label: 'bun', command: 'bun add -d next-pwa-auto' };
   if (entries.includes('pnpm-lock.yaml'))
-    return { label: 'pnpm', command: 'pnpm add next-pwa-auto' };
-  if (entries.includes('yarn.lock')) return { label: 'yarn', command: 'yarn add next-pwa-auto' };
+    return { label: 'pnpm', command: 'pnpm add -D next-pwa-auto' };
+  if (entries.includes('yarn.lock')) return { label: 'yarn', command: 'yarn add -D next-pwa-auto' };
   if (entries.includes('package-lock.json'))
-    return { label: 'npm', command: 'npm install next-pwa-auto' };
-  return { label: 'npm', command: 'npm install next-pwa-auto' };
+    return { label: 'npm', command: 'npm install -D next-pwa-auto' };
+  return { label: 'npm', command: 'npm install -D next-pwa-auto' };
 }
 
 function getPackageManagerFromManifest(
@@ -645,10 +645,10 @@ function getPackageManagerFromManifest(
     const pkg = readJsonFile(packageJsonPath);
     const manager = typeof pkg.packageManager === 'string' ? pkg.packageManager : '';
     const lower = manager.toLowerCase();
-    if (lower.startsWith('bun@')) return { label: 'bun', command: 'bun add next-pwa-auto' };
-    if (lower.startsWith('pnpm@')) return { label: 'pnpm', command: 'pnpm add next-pwa-auto' };
-    if (lower.startsWith('yarn@')) return { label: 'yarn', command: 'yarn add next-pwa-auto' };
-    if (lower.startsWith('npm@')) return { label: 'npm', command: 'npm install next-pwa-auto' };
+    if (lower.startsWith('bun@')) return { label: 'bun', command: 'bun add -d next-pwa-auto' };
+    if (lower.startsWith('pnpm@')) return { label: 'pnpm', command: 'pnpm add -D next-pwa-auto' };
+    if (lower.startsWith('yarn@')) return { label: 'yarn', command: 'yarn add -D next-pwa-auto' };
+    if (lower.startsWith('npm@')) return { label: 'npm', command: 'npm install -D next-pwa-auto' };
   } catch {
     // ignore malformed package.json
   }

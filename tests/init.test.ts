@@ -108,7 +108,7 @@ describe('init command', () => {
     await runInit({ skip: true, force: true });
 
     expect(readCommandLog()).toEqual([
-      'bun add next-pwa-auto',
+      'bun add -d next-pwa-auto',
       'bun run build',
       'npx next-pwa-auto doctor',
     ]);
@@ -620,7 +620,7 @@ describe('init command', () => {
     await runInit({ skip: true, force: true });
 
     expect(readCommandLog()).toEqual([
-      'npm install next-pwa-auto',
+      'npm install -D next-pwa-auto',
       'npm run build',
       'npx next-pwa-auto doctor',
     ]);

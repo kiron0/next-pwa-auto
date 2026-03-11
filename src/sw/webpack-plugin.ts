@@ -1,3 +1,4 @@
+import { GenerateSW } from 'workbox-webpack-plugin';
 import { CacheStrategy, ResolvedConfig, RoutePattern } from '../types';
 
 const STRATEGY_MAP: Record<CacheStrategy, string> = {
@@ -345,7 +346,6 @@ export function createSWWebpackPlugin(config: ResolvedConfig) {
   }
 
   try {
-    const { GenerateSW } = require('workbox-webpack-plugin');
     const workboxOptions = buildWorkboxOptions(config);
     return new GenerateSW(workboxOptions);
   } catch (e) {

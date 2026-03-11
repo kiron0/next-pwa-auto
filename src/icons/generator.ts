@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import sharp from 'sharp';
 import { formatAppName, getPublicDir, getPwaOutputDir } from '../config';
@@ -24,7 +25,7 @@ export async function generateIcons(config: ResolvedConfig): Promise<IconGenerat
     const iconPath = path.isAbsolute(config.icon)
       ? config.icon
       : path.join(config.projectRoot, config.icon);
-    if (require('fs').existsSync(iconPath)) {
+    if (fs.existsSync(iconPath)) {
       sourceIcon = iconPath;
     }
   }
@@ -210,7 +211,7 @@ function getExistingFaviconPath(projectRoot: string): string | null {
   ];
 
   for (const candidate of candidates) {
-    if (require('fs').existsSync(candidate)) {
+    if (fs.existsSync(candidate)) {
       return candidate;
     }
   }

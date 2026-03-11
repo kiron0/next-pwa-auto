@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getPublicDir, getPwaOutputDir, isNextProject, readJsonFile, resolveConfig } from './config';
@@ -225,12 +226,13 @@ function scheduleIconGeneration(config: ReturnType<typeof resolveConfig>): Manif
     config.pwaDir,
     '.icon-manifest.json'
   );
+  const iconWorkerPath = path.join(config.projectRoot, 'public', config.pwaDir, '.icon-worker.cjs');
   try {
-    const { execSync } = require('child_process');
-    const scriptPath = path.join(__dirname, '_generate-icons.js');
     const script = `
 const path = require('path');
-const { generateIcons } = require(path.join('${__dirname.replace(/\\/g, '\\\\')}', 'icons'));
+const packageEntry = require.resolve('next-pwa-auto');
+const packageDistDir = path.dirname(packageEntry);
+const { generateIcons } = require(path.join(packageDistDir, 'icons', 'generator.js'));
 const config = ${JSON.stringify({
       ...config,
       workbox: undefined,
@@ -245,10 +247,13 @@ generateIcons(config).then((result) => {
     const outputPath = path.join('${config.projectRoot.replace(/\\/g, '\\\\')}', 'public', '${config.pwaDir}', '.icon-manifest.json');
     fs.writeFileSync(outputPath, JSON.stringify(result.icons, null, 2));
   }
-}).catch(console.error);
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
 `;
-    fs.writeFileSync(scriptPath, script, 'utf-8');
-    execSync(`node "${scriptPath}"`, {
+    fs.writeFileSync(iconWorkerPath, script, 'utf-8');
+    execFileSync(process.execPath, [iconWorkerPath], {
       cwd: config.projectRoot,
       stdio: 'inherit',
       timeout: 30000,
@@ -269,9 +274,8 @@ generateIcons(config).then((result) => {
         '  Run `npx next-pwa-auto doctor` to diagnose issues'
     );
   } finally {
-    const scriptPath = path.join(__dirname, '_generate-icons.js');
-    if (fs.existsSync(scriptPath)) {
-      fs.unlinkSync(scriptPath);
+    if (fs.existsSync(iconWorkerPath)) {
+      fs.unlinkSync(iconWorkerPath);
     }
     if (fs.existsSync(iconManifestPath)) {
       fs.unlinkSync(iconManifestPath);
