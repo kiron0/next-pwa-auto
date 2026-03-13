@@ -64,8 +64,19 @@ program
     }
   });
 
-program.parse(process.argv);
+async function main(): Promise<void> {
+  try {
+    await program.parseAsync(process.argv);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(chalk.red('  ?'), chalk.red(message));
+    process.exitCode = 1;
+    return;
+  }
 
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
+  if (!process.argv.slice(2).length) {
+    program.outputHelp();
+  }
 }
+
+void main();

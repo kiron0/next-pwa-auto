@@ -78,6 +78,13 @@ export class InitCancelledError extends Error {
   }
 }
 
+export class InitUsageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InitUsageError';
+  }
+}
+
 const HEADER_ICON = '\u{1F680}';
 const COMPLETE_ICON = '\u{2705}';
 
@@ -136,8 +143,9 @@ export async function runInit(options: InitOptions | boolean = false): Promise<I
   }
 
   if (!isNextProject(projectRoot)) {
-    console.log(chalk.red('  ?'), chalk.red('Not a Next.js project'));
-    throw new Error('next-pwa-auto init can only be used in a Next.js project.');
+    throw new InitUsageError(
+      'next-pwa-auto init can only be used in a Next.js project. Run this command from your Next.js app directory.'
+    );
   }
 
   const pkg = readPackageJson(projectRoot);
