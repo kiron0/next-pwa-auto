@@ -361,7 +361,7 @@ describe('interactive init', () => {
     await runInit();
 
     const output = logs.join('\n');
-    expect(output).toContain('Detected existing <PWAHead /> in app\\layout.tsx.');
+    expect(output).toMatch(/Detected existing <PWAHead \/> in app[\\/]layout\.tsx\./);
     expect(
       vi.mocked(prompts.confirm).mock.calls.find((call) => call[0].message === 'Add <PWAHead /> to your root layout?')
     ).toBeUndefined();

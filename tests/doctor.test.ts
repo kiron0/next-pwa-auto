@@ -140,8 +140,8 @@ describe('doctor command', () => {
 
     const out = logs.join('\n');
     expect(out).toContain('PWAHead (app layout):');
-    expect(out).toContain('Missing <PWAHead /> in app\\layout.tsx');
-    expect(out).toContain('Manual: Add <PWAHead /> inside <head> in app\\layout.tsx');
+    expect(out).toMatch(/Missing <PWAHead \/> in app[\\/]layout\.tsx/);
+    expect(out).toMatch(/Manual: Add <PWAHead \/> inside <head> in app[\\/]layout\.tsx/);
   });
 
   it('warns when PWAHead is missing in pages _app', async () => {
@@ -177,8 +177,8 @@ describe('doctor command', () => {
 
     const out = logs.join('\n');
     expect(out).toContain('PWAHead (pages layout):');
-    expect(out).toContain('Missing <PWAHead /> in pages\\_app.tsx');
-    expect(out).toContain('Manual: Add <PWAHead /> in pages/_app.tsx');
+    expect(out).toMatch(/Missing <PWAHead \/> in pages[\\/]_app\.tsx/);
+    expect(out).toMatch(/Manual: Add <PWAHead \/> in pages[\\/]_app\.tsx/);
   });
 
   it('fails source-icon check if no source icon and no generated icons', async () => {
@@ -290,7 +290,7 @@ describe('doctor command', () => {
     await runDoctor();
 
     const out = logs.join('\n');
-    expect(out).toContain('Found .next\\static\\sw.js.');
+    expect(out).toMatch(/Found \.next[\\/]static[\\/]sw\.js\./);
     expect(out).not.toContain(
       'Service worker not found after build. Verify webpack mode and withPWAAuto integration.'
     );
